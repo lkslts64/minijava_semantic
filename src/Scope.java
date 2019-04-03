@@ -3,13 +3,13 @@ package symboltable;
 import java.util.HashMap;
 
 public class Scope {
-    private HashMap <String,String> bindings;
+    private HashMap <String,String> bindings; //basic mapping : IDENTIFIER , TYPE
 
     public Scope(){
         bindings = new HashMap<>();
     }
     public int put(String key,String value){
-        if bindings.containsKey(key) {
+        if (bindings.containsKey(key)) {
             //caller or this func should throw parse error in this case...
             return -1;
         }
