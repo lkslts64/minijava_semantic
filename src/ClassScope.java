@@ -36,12 +36,12 @@ public class ClassScope extends symboltable.Scope {
         return funcbindings.get(key);
     }
 
-    public addFuncOffsets(String s, Integer i){
-        PairStringInteger p = new PairStringInteger(s,i)
+    public void addFuncOffsets(String s, Integer i){
+        PairStringInteger p = new PairStringInteger(s,i);
         funcoffsets.add(p);
     }
-    public addVarOffsets(String s,Integer i){
-        PairStringInteger p = new PairStringInteger(s,i)
+    public void addVarOffsets(String s,Integer i){
+        PairStringInteger p = new PairStringInteger(s,i);
         varoffsets.add(p);
     }
 
@@ -49,7 +49,7 @@ public class ClassScope extends symboltable.Scope {
         return funcoffsets;
     }
 
-    public Vector<String,Integer> getVaroffsets() {
+    public Vector<PairStringInteger> getVaroffsets() {
         return varoffsets;
     }
 

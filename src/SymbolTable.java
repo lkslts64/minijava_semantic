@@ -36,7 +36,7 @@ public class SymbolTable {
         return ScopeInheritanceChain.get(scope);
     }
 
-    public putClassHash(String type, symboltable.ClassScope cs) {
+    public boolean putClassHash(String type, symboltable.ClassScope cs) {
         if (classHash.containsKey(type)) {
             //caller or this func should throw parse error in this case...
             return false;
@@ -50,7 +50,7 @@ public class SymbolTable {
         return classHash.get(key);
     }
 
-    public putFuncHash(String s1, String s2, symboltable.Scope sc) {
+    public boolean putFuncHash(String s1, String s2, symboltable.Scope sc) {
         PairStrings p = new PairStrings(s1, s2);
         if (funcHash.containsKey(p)) {
             return false;
@@ -68,11 +68,11 @@ public class SymbolTable {
         return knownTypes.contains(type);
     }
 
-    public addKnownTypes(String type) {
+    public void addKnownTypes(String type) {
         knownTypes.add(type);
     }
 
-    public addUndeclared(String type) {
+    public void addUndeclared(String type) {
         undeclared.add(type);
     }
 
@@ -117,7 +117,7 @@ public class SymbolTable {
             Vector<String> argp = parentfuncSignature.getArgTypes();
             if (argp.size() == arg.size()) {
                 for (int i = 0; i < argp.size(); i++) {
-                    if (arg[i] == argp[i])
+                    if (arg.get(i) == argp.get(i))
                         continue;
                     else {
                         System.out.println("Funcion overloading detected (different arg types). Thats not possible in minijava");
