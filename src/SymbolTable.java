@@ -105,6 +105,9 @@ public class SymbolTable {
         } catch (NullPointerException ex) {
             return true;
         }
+        //undeclared.removeAll(knownTypes);
+        System.out.println(undeclared);
+        System.out.println(knownTypes);
         //should throw parse error....
         System.out.println("Parse Error, undeclared type(s)");
         return false;
@@ -125,47 +128,55 @@ public class SymbolTable {
     public boolean checkOverride(String fn, String cn) {
         symboltable.ClassScope scope = getClassHash(cn);
         symboltable.ClassScope parentscope = getScopeInheritanceChain(scope);
-        if (parentscope == null) {
-            System.out.println("NO OVERRIDE");
-            scope.addFuncOffsets(fn,scope.getFuncSize());
-            scope.addFuncSize();
-            return true;
-        }
-        symboltable.FuncSignature parentfuncSignature = parentscope.getFuncBind(fn);
-        if (parentfuncSignature == null) {
-            System.out.println("NO OVERRIDE");
-            //add func to offset list and add funcsizecounter.
-            scope.addFuncOffsets(fn,scope.getFuncSize());
-            scope.addFuncSize();
-            return true;
-        }
-        //compare the two function signatures to examine whether is overloading or overriding.
-        symboltable.FuncSignature funcSignature = scope.getFuncBind(fn);
-        if (funcSignature.getReturnType() == parentfuncSignature.getReturnType()) {
-            Vector<String> arg = funcSignature.getArgTypes();
-            Vector<String> argp = parentfuncSignature.getArgTypes();
-            if (argp.size() == arg.size()) {
-                for (int i = 0; i < argp.size(); i++) {
-                    if (arg.get(i) == argp.get(i))
-                        continue;
-                    else {
-                        System.out.println("Funcion overloading detected (different arg types). Thats not possible in minijava");
-                        return false;
-                    }
-                }
-                //we dont need to addFuncSize neither to add to funcoffsets...
-                System.out.println("THIS FUNC OVERRIDES ANOTHER FROM PARENT CLASS");
+        while (parentscope != null) {
+            /*if (parentscope == null) {
+                System.out.println("NO OVERRIDE");
+                scope.addFuncOffsets(fn, scope.getFuncSize());
+                scope.addFuncSize();
                 return true;
+            }*/
+            symboltable.FuncSignature parentfuncSignature = parentscope.getFuncBind(fn);
+            if (parentfuncSignature == null) {
+                //add func to offset list and add funcsizecounter.
+                /*scope.addFuncOffsets(fn, scope.getFuncSize());
+                scope.addFuncSize();
+                return true;*/
+                parentscope = getScopeInheritanceChain(parentscope);
+                continue;
             }
-            else {
-                System.out.println("Funcion overloading detected (different # of args). Thats not possible in minijava");
+            //compare the two function signatures to examine whether is overloading or overriding.
+            symboltable.FuncSignature funcSignature = scope.getFuncBind(fn);
+            if (funcSignature == null)
+                System.out.println("funcsign null");
+            if (funcSignature.getReturnType() == parentfuncSignature.getReturnType()) {
+                Vector<String> arg = funcSignature.getArgTypes();
+                Vector<String> argp = parentfuncSignature.getArgTypes();
+                if (argp.size() == arg.size()) {
+                    for (int i = 0; i < argp.size(); i++) {
+                        if (arg.get(i) == argp.get(i))
+                            continue;
+                        else {
+                            System.out.println("Funcion overloading detected (different arg types). Thats not possible in minijava");
+                            return false;
+                        }
+                    }
+                    //we dont need to addFuncSize neither to add to funcoffsets...
+                    //additionaly, we dont need to check if other classes have same func signature or
+                    //if there is overloading because the check has been made from the class we found now.
+                    System.out.println("this func overrides another from one of the parent class(es)");
+                    return true;
+                } else {
+                    System.out.println("Funcion overloading detected (different # of args). Thats not possible in minijava");
+                    return false;
+                }
+            } else {
+                System.out.println("Funcion overloading detected (different return values). Thats not possible in minijava");
                 return false;
             }
         }
-        else {
-            System.out.println("Funcion overloading detected (different return values). Thats not possible in minijava");
-            return false;
-        }
+        scope.addFuncOffsets(fn, scope.getFuncSize());
+        scope.addFuncSize();
+        return true;
     }
     public void display_contents() {
         //classes...
