@@ -21,6 +21,28 @@ public class ClassScope extends symboltable.Scope {
         varsize = initvarsz;
         funcsize = initfuncsize;
     }
+
+    @Override
+    public boolean put(String key, String value) {
+        if ( value == "int") {
+            PairStringInteger pairStringInteger = new PairStringInteger(key,4);
+            varoffsets.add(pairStringInteger);
+            varsize += 4;
+        }
+        else if ( value == "boolean") {
+            PairStringInteger pairStringInteger = new PairStringInteger(key,1);
+            varoffsets.add(pairStringInteger);
+            varsize += 1;
+        }
+        else {
+            PairStringInteger pairStringInteger = new PairStringInteger(key,8);
+            varoffsets.add(pairStringInteger);
+            varsize += 8;
+
+        }
+        return super.put(key, value);
+    }
+
     public boolean putFuncBind(String key, symboltable.FuncSignature value) {
         if (funcbindings.containsKey(key)) {
             //caller or this func should throw parse error in this case...
@@ -68,8 +90,8 @@ public class ClassScope extends symboltable.Scope {
     public int getFuncSize() {
         return funcsize;
     }
-    public void addFuncSize(int off) {
-        funcsize += off;
+    public void addFuncSize() {
+        funcsize += 8;
     }
 }
 

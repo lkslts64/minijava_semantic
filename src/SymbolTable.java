@@ -76,24 +76,44 @@ public class SymbolTable {
         undeclared.add(type);
     }
 
-    public int findSizeof(String type) {
+    //call this func to find the var size of a base class.
+    public int findVarSizeof(String type) {
         symboltable.ClassScope classScope = getClassHash(type);
         return classScope.getVarSize();
     }
 
+    //call this func to find the func size of a base class.
+    public int findFuncSizeof(String type) {
+        symboltable.ClassScope classScope = getClassHash(type);
+        return classScope.getFuncSize();
+    }
+
     //should be called after parsing whole source file.
+    //knownTypes can't be null, because our source should have at least one type (grammar specifies it).
     public boolean checkUndeclared() {
         try {
             if (knownTypes.containsAll(undeclared)) {
                 return true;
             }
+        //if undeclared is null, still not unresolved types so we return true.
         } catch (NullPointerException ex) {
             return true;
         }
         //should throw parse error....
         System.out.println("Parse Error, undeclared type(s)");
         return false;
+    }
 
+    //this func should be called after symbol table creation.
+    //find return type of a func given its primary key.
+    public String getReturnType(String fn,String cn) {
+        symboltable.ClassScope scope = getClassHash(cn);
+        if (scope == null)
+            return null;
+        symboltable.FuncSignature funcSignature = scope.getFuncBind(fn);
+        if (funcSignature == null)
+            return null;
+        return funcSignature.getReturnType();
     }
 
     public boolean checkOverride(String fn, String cn) {
@@ -101,13 +121,16 @@ public class SymbolTable {
         symboltable.ClassScope parentscope = getScopeInheritanceChain(scope);
         if (parentscope == null) {
             System.out.println("NO OVERRIDE");
-            scope.addFuncSize(8);
+            scope.addFuncOffsets(fn,scope.getFuncSize());
+            scope.addFuncSize();
             return true;
         }
         symboltable.FuncSignature parentfuncSignature = parentscope.getFuncBind(fn);
         if (parentfuncSignature == null) {
             System.out.println("NO OVERRIDE");
-            scope.addFuncSize(8);
+            //add func to offset list and add funcsizecounter.
+            scope.addFuncOffsets(fn,scope.getFuncSize());
+            scope.addFuncSize();
             return true;
         }
         //compare the two function signatures to examine whether is overloading or overriding.
@@ -124,6 +147,8 @@ public class SymbolTable {
                         return false;
                     }
                 }
+                //we dont need to addFuncSize neither to add to funcoffsets...
+                System.out.println("THIS FUNC OVERRIDES ANOTHER FROM PARENT CLASS");
                 return true;
             }
             else {
