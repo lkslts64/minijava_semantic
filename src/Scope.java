@@ -20,6 +20,11 @@ public class Scope {
     public String get(String key){
         return bindings.get(key);
     }
+
+    public HashMap<String, String> getBindings() {
+        return bindings;
+    }
+
     public boolean hasValue(String value) {
         return bindings.containsValue(value);
     }

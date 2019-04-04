@@ -1,5 +1,7 @@
 package symboltable;
 
+import symboltable.PairStringInteger;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Vector;
@@ -20,6 +22,10 @@ public class SymbolTable {
         funcHash = new HashMap<>();
         undeclared = new HashSet<>();
         knownTypes = new HashSet<>();
+        //add all primitive types
+        knownTypes.add("int");
+        knownTypes.add("int[]");
+        knownTypes.add("boolean");
     }
 
     public boolean putScopeInheritanceChain(symboltable.Scope scope, symboltable.ClassScope classScope) {
@@ -50,8 +56,8 @@ public class SymbolTable {
         return classHash.get(key);
     }
 
-    public boolean putFuncHash(String s1, String s2, symboltable.Scope sc) {
-        PairStrings p = new PairStrings(s1, s2);
+    public boolean putFuncHash(String fn, String cn, symboltable.Scope sc) {
+        PairStrings p = new PairStrings(fn, cn);
         if (funcHash.containsKey(p)) {
             return false;
         }
@@ -161,6 +167,52 @@ public class SymbolTable {
             return false;
         }
     }
+    public void display_contents() {
+        //classes...
+        for ( String s : classHash.keySet()) {
+            System.out.println("---------------------");
+            System.out.println(s);
+            System.out.println("---------------------");
+            symboltable.ClassScope classScope = classHash.get(s);
+            HashMap<String, symboltable.FuncSignature> funcSignatureHashMap = classScope.getFuncbindings();
+            String meta = classScope.getClassName() + " " + classScope.getFuncSize() + " " + classScope.getVarSize();
+            System.out.println(meta);
+            for ( String s2 : funcSignatureHashMap.keySet()) {
+                symboltable.FuncSignature funcSignature = classScope.getFuncBind(s2);
+                Vector<String> argvec = funcSignature.getArgTypes();
+                System.out.println("args:");
+                for (String s3 : argvec) {
+                    System.out.println(s3);
+                }
+                System.out.print("return type:");
+                System.out.println(funcSignature.getReturnType());
+            }
+            System.out.println("----------------------");
+            System.out.println("offsets");
+            System.out.println("----------------------");
+            for (PairStringInteger p : classScope.getVaroffsets()) {
+                System.out.println(p);
+            }
+            System.out.println("FuncOFFSETS");
+            for (PairStringInteger p : classScope.getFuncoffsets()) {
+                System.out.println(p);
+            }
+        }
+        System.out.println("FUNCTIONSSSSS");
+        //functions...
+        for (PairStrings p : funcHash.keySet()) {
+            System.out.println("---------------------");
+            System.out.println(p);
+            System.out.println("---------------------");
+            symboltable.Scope scope = funcHash.get(p);
+            HashMap<String,String> funcbind = scope.getBindings();
+            for (String s2 : funcbind.keySet()) {
+                String s3 = funcbind.get(s2);
+                System.out.println(s3 + s2);
+            }
+
+        }
+    }
 }
 class PairStrings {
     private String s1;
@@ -169,6 +221,11 @@ class PairStrings {
     public PairStrings(String fn,String cn){
         s1 = fn;
         s2 = cn;
+    }
+
+    @Override
+    public String toString() {
+        return s1 + " " + s2;
     }
 }
     /*public fillMissingOffsets(HashSet<String> set) {

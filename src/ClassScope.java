@@ -12,14 +12,16 @@ public class ClassScope extends symboltable.Scope {
     private Vector<PairStringInteger> varoffsets;
     private int varsize;
     private int funcsize;
+    private String className;
 
-    public ClassScope(int initvarsz,int initfuncsize) {
+    public ClassScope(int initvarsz,int initfuncsize,String cn) {
         super();
         funcbindings = new HashMap<>();
         funcoffsets = new Vector<>();
         varoffsets = new Vector<>();
         varsize = initvarsz;
         funcsize = initfuncsize;
+        className = cn;
     }
 
     @Override
@@ -43,6 +45,10 @@ public class ClassScope extends symboltable.Scope {
         return super.put(key, value);
     }
 
+    public String getClassName() {
+        return className;
+    }
+
     public boolean putFuncBind(String key, symboltable.FuncSignature value) {
         if (funcbindings.containsKey(key)) {
             //caller or this func should throw parse error in this case...
@@ -56,6 +62,10 @@ public class ClassScope extends symboltable.Scope {
     //this can return null...
     public symboltable.FuncSignature getFuncBind(String key) {
         return funcbindings.get(key);
+    }
+
+    public HashMap<String, symboltable.FuncSignature> getFuncbindings() {
+        return funcbindings;
     }
 
     public void addFuncOffsets(String s, Integer i){
@@ -101,5 +111,10 @@ class PairStringInteger {
     public PairStringInteger(String s,Integer i ){
         funcname = s;
         offset = i;
+    }
+
+    @Override
+    public String toString() {
+        return funcname + " " + offset;
     }
 }
