@@ -18,7 +18,8 @@ class Main {
 	    SymbolTableVisitor sym = new SymbolTableVisitor();
 	    Goal root = parser.Goal();
 	    //System.out.println(root.accept(sym));
-		root.accept(sym,null);
+		if ( root.accept(sym,null) == "ERROR" )
+			System.exit(0);
 		//sym.symbolTable.display_contents();
 		sym.symbolTable.print_offsets();
 	}

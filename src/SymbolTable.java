@@ -85,12 +85,16 @@ public class SymbolTable {
     //call this func to find the var size of a base class.
     public int findVarSizeof(String type) {
         symboltable.ClassScope classScope = getClassHash(type);
+        if (classScope == null)
+            System.out.println("PANIC .Class doesnt exist");
         return classScope.getVarSize();
     }
 
     //call this func to find the func size of a base class.
     public int findFuncSizeof(String type) {
         symboltable.ClassScope classScope = getClassHash(type);
+        if (classScope == null)
+            System.out.println("PANIC .Class doesnt exist");
         return classScope.getFuncSize();
     }
 
@@ -109,7 +113,6 @@ public class SymbolTable {
         System.out.println(undeclared);
         System.out.println(knownTypes);
         //should throw parse error....
-        System.out.println("Parse Error, undeclared type(s)");
         return false;
     }
 
@@ -162,7 +165,7 @@ public class SymbolTable {
                     if (arg.get(i) == argp.get(i))
                         continue;
                     else {
-                        System.out.println("Funcion overloading detected (different arg types). Thats not possible in minijava");
+                        System.out.println(">Error:Funcion overloading detected (different arg types). Thats not possible in minijava");
                         return false;
                     }
                 }
@@ -172,11 +175,11 @@ public class SymbolTable {
                 System.out.println("this func overrides another from one of the parent class(es)");
                 return true;
             } else {
-                System.out.println("Funcion overloading detected (different # of args). Thats not possible in minijava");
+                System.out.println(">Error:Funcion overloading detected (different # of args). Thats not possible in minijava");
                 return false;
             }
         } else {
-            System.out.println("Funcion overloading detected (different return values). Thats not possible in minijava");
+            System.out.println(">Error:Funcion overloading detected (different return values). Thats not possible in minijava");
             return false;
         }
     }

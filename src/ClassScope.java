@@ -12,16 +12,14 @@ public class ClassScope extends symboltable.Scope {
     private Vector<PairStringInteger> varoffsets;
     private int varsize;
     private int funcsize;
-    private String className;
 
     public ClassScope(int initvarsz,int initfuncsize,String cn) {
-        super();
+        super(cn);
         funcbindings = new HashMap<>();
         funcoffsets = new Vector<>();
         varoffsets = new Vector<>();
         varsize = initvarsz;
         funcsize = initfuncsize;
-        className = cn;
     }
 
     @Override
@@ -52,7 +50,7 @@ public class ClassScope extends symboltable.Scope {
     }
 
     public String getClassName() {
-        return className;
+        return name;
     }
 
     public boolean putFuncBind(String key, symboltable.FuncSignature value) {

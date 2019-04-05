@@ -4,11 +4,19 @@ import java.util.HashMap;
 
 public class Scope {
     private HashMap <String,String> bindings; //basic mapping : IDENTIFIER , TYPE
+    protected String name;
 
-    public Scope(){
+    public Scope(String n)
+    {
+        name = n;
         bindings = new HashMap<>();
     }
-    public boolean put(String key,String value){
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean put(String key, String value){
         if (bindings.containsKey(key)) {
             //caller or this func should throw parse error in this case...
             return false;
