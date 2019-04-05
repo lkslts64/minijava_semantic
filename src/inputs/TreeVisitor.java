@@ -351,11 +351,11 @@ class Visitor {
 }
 
 
-class MyVisitor extends A {
+class MyVisitor extends Visitor {
 
-    public boolean visit(Tree n){
+    public int visit(Tree n){
 	int nti ;
-	A v;
+	
 
 	if (n.GetHas_Right()){
 	    r = n.GetRight() ;

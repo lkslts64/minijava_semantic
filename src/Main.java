@@ -20,6 +20,7 @@ class Main {
 	    //System.out.println(root.accept(sym));
 		root.accept(sym,null);
 		//sym.symbolTable.display_contents();
+		sym.symbolTable.print_offsets();
 	}
 	catch(ParseException ex){
 	    System.out.println(ex.getMessage());

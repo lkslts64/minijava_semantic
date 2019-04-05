@@ -26,23 +26,29 @@ public class ClassScope extends symboltable.Scope {
 
     @Override
     public boolean put(String key, String value) {
-        if ( value == "int") {
-            PairStringInteger pairStringInteger = new PairStringInteger(key,4);
+        if ( super.put(key, value) == false ) {
+            System.out.println("KEY EXISTS");
+            return false;           //we dont want to provoke to further actions if this fails...
+
+        }
+        if (value.equals("int")) {
+            PairStringInteger pairStringInteger = new PairStringInteger(key,varsize);
             varoffsets.add(pairStringInteger);
             varsize += 4;
         }
-        else if ( value == "boolean") {
-            PairStringInteger pairStringInteger = new PairStringInteger(key,1);
+        else if ( value.equals("boolean")) {
+            PairStringInteger pairStringInteger = new PairStringInteger(key,varsize);
             varoffsets.add(pairStringInteger);
             varsize += 1;
         }
         else {
-            PairStringInteger pairStringInteger = new PairStringInteger(key,8);
+            PairStringInteger pairStringInteger = new PairStringInteger(key,varsize);
             varoffsets.add(pairStringInteger);
             varsize += 8;
 
         }
-        return super.put(key, value);
+        //return super.put(key, value);
+        return true;
     }
 
     public String getClassName() {
@@ -115,6 +121,6 @@ class PairStringInteger {
 
     @Override
     public String toString() {
-        return funcname + " " + offset;
+        return funcname + " : " + offset;
     }
 }

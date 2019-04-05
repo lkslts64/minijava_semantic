@@ -91,6 +91,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Object> {
       n.f1.accept(this, argu);
       n.f2.accept(this, argu);
       symbolTable.checkUndeclared();
+      //symbolTable.print_offsets();
       return _ret;
    }
 
@@ -236,7 +237,9 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Object> {
       }*/
       if (argu instanceof Scope) {
           Scope scope = (Scope) argu;
-          scope.put(n.f1.accept(this, argu),n.f0.accept(this, argu));
+          if ( scope.put(n.f1.accept(this, argu),n.f0.accept(this, argu)) == false ) {
+              System.out.println("Same variable declared more than once.");
+          }
       }
       else {
           System.out.println("PANIC. EXPECTED Scope class.");
