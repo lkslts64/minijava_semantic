@@ -21,7 +21,7 @@ class Main {
 		if ( root.accept(sym,null) == "ERROR" )
 			System.exit(0);
 		//sym.symbolTable.display_contents();
-		sym.symbolTable.print_offsets();
+		//sym.symbolTable.print_offsets();
 	}
 	catch(ParseException ex){
 	    System.out.println(ex.getMessage());

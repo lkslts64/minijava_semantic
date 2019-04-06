@@ -14,6 +14,15 @@ public class FuncSignature {
         argTypes.add(arg);
     }
 
+    public String getArgType(int i) {
+        try {
+            return argTypes.get(i);
+        }
+        catch (ArrayIndexOutOfBoundsException ex) {
+            return null;
+        }
+    }
+
 
     public Vector<String> getArgTypes() {
         return argTypes;

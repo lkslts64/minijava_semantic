@@ -98,6 +98,16 @@ public class SymbolTable {
         return classScope.getFuncSize();
     }
 
+    public String getClass(symboltable.Scope scope) {
+        symboltable.ClassScope classScope = getScopeInheritanceChain(scope);
+        if ( classScope == null) {
+            System.out.println("PANIC.mother chain error");
+            return null;
+        }
+        return classScope.getClassName();
+
+    }
+
     //should be called after parsing whole source file.
     //knownTypes can't be null, because our source should have at least one type (grammar specifies it).
     public boolean checkUndeclared() {
@@ -127,7 +137,15 @@ public class SymbolTable {
             return null;
         return funcSignature.getReturnType();
     }
-
+    public symboltable.FuncSignature getFuncSignature(symboltable.Scope scope) {
+        symboltable.ClassScope classScope = getScopeInheritanceChain(scope);
+        if ( classScope == null)
+            System.out.println("PANIC. mother chain.");
+        symboltable.FuncSignature funcSignature = classScope.getFuncBind(scope.getName());
+        if ( funcSignature == null)
+            System.out.println("PANIC. func sign hash.");
+        return funcSignature;
+    }
     public boolean checkOverride(String fn, String cn) {
         symboltable.ClassScope scope = getClassHash(cn);
         symboltable.ClassScope parentscope = getScopeInheritanceChain(scope);

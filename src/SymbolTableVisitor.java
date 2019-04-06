@@ -18,7 +18,7 @@ import visitor.GJDepthFirst;
 public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
 
 
-   public SymbolTable symbolTable;
+   private SymbolTable symbolTable;
    private boolean error;
 
    //
@@ -99,10 +99,13 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       if ( symbolTable.checkUndeclared() == false )
           printErrMsg("Parse Error, undeclared type(s)");
       System.out.println(error);
-      if ( error ==  true)
+      if ( error ==  true) {
           return "ERROR";
-      else
+      }
+      else {
+          symbolTable.print_offsets();
           return "OK";
+      }
    }
 
    /**
@@ -315,14 +318,18 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
     * f0 -> Type()
     * f1 -> Identifier()
     */
-   //argu is FuncSignature or Scope.
    public String visit(FormalParameter n, Scope argu) {
       String _ret=null;
       ClassScope classScope = symbolTable.getScopeInheritanceChain(argu);
       if ( classScope == null) {
-          //panic
+          printErrMsg("PANIC.mother chain returned null");
+          return _ret;
       }
       FuncSignature funcSignature = classScope.getFuncBind(argu.getName());
+      if ( funcSignature == null) {
+          printErrMsg("PANIC.funcsign hash returned null");
+          return _ret;
+      }
       funcSignature.addArg(n.f0.accept(this, argu));
       boolean res = argu.put(n.f1.accept(this,argu),n.f0.accept(this,argu));
       if ( res == false) {
