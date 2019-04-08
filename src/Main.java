@@ -20,8 +20,11 @@ class Main {
 	    //System.out.println(root.accept(sym));
 		if ( root.accept(sym,null) == "ERROR" )
 			System.exit(0);
-		//sym.symbolTable.display_contents();
+		System.out.println("---------------------------------------------");
+		sym.symbolTable.display_contents();
 		//sym.symbolTable.print_offsets();
+		TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
+		root.accept(typeCheckerVisitor,null);
 	}
 	catch(ParseException ex){
 	    System.out.println(ex.getMessage());

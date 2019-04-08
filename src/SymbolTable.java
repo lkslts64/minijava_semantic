@@ -67,7 +67,12 @@ public class SymbolTable {
 
     public symboltable.Scope getFuncHash(String s1, String s2) {
         PairStrings p = new PairStrings(s1, s2);
-        return funcHash.get(p);
+        System.out.println(p);
+        symboltable.Scope scope = funcHash.get(p);
+        if ( scope == null  ) {
+            System.out.println("WHY");
+        }
+        return scope;
     }
 
     public boolean isDeclared(String type) {
@@ -254,6 +259,7 @@ public class SymbolTable {
             System.out.println(p);
             System.out.println("---------------------");
             symboltable.Scope scope = funcHash.get(p);
+            //return funcHash.get(p);
             HashMap<String,String> funcbind = scope.getBindings();
             for (String s2 : funcbind.keySet()) {
                 String s3 = funcbind.get(s2);

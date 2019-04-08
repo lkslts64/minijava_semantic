@@ -18,7 +18,7 @@ import visitor.GJDepthFirst;
 public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
 
 
-   private SymbolTable symbolTable;
+   public SymbolTable symbolTable;
    private boolean error;
 
    //
