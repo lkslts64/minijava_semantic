@@ -268,10 +268,20 @@ public class SymbolTable {
 
         }
     }
+    public void display_allFuncs() {
+        for (PairStrings p : funcHash.keySet()) {
+            System.out.println(p);
+            symboltable.Scope scope = getFuncHash(p.s1,p.s2);
+            if ( scope == null)
+                System.out.println("THE ABOVE IS NULL");
+        }
+
+    }
 }
+//restore these fields to private.
 class PairStrings {
-    private String s1;
-    private String s2;
+    public String s1;
+    public String s2;
 
     public PairStrings(String fn,String cn){
         s1 = fn;
@@ -281,6 +291,29 @@ class PairStrings {
     @Override
     public String toString() {
         return s1 + " " + s2;
+    }
+
+    @Override
+    public boolean equals(Object p) {
+        if (p instanceof PairStrings) {
+            PairStrings pairStrings = (PairStrings) p;
+            return (this.s1 == pairStrings.s1 && this.s2 == pairStrings.s2);
+        }
+        else
+            System.out.println("PANIC . Pairstrings");
+            return false;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 0;
+        for ( int i = 0; i< this.s1.length(); i++ ) {
+            result += s1.charAt(i);
+        }
+        for ( int i = 0; i< this.s2.length(); i++ ) {
+            result += s2.charAt(i);
+        }
+        return result;
     }
 }
     /*public fillMissingOffsets(HashSet<String> set) {

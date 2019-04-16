@@ -217,11 +217,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     public String visit(MethodDeclaration n, Scope argu) {
         String _ret=null;
         //Scope scope = sym.getFuncHash(n.f2.accept(this, argu),argu.getName());
-        Scope scope = sym.getFuncHash(n.f2.accept(this,argu),argu.getName());
-        sym.display_contents();
-        if ( scope == null) {
-            System.out.println("method scope null");
-        }
+        Scope scope = sym.getFuncHash(n.f2.accept(this,null),argu.getName());
         n.f8.accept(this, scope);
         if ( sym.getFuncSignature(scope).getReturnType() != n.f10.accept(this, argu))
             printErrMsg("not matched return types in func...");
@@ -338,8 +334,6 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      */
     public String visit(AssignmentStatement n, Scope argu) {
         String _ret=null;
-        if (argu == null)
-            System.out.println("ERROR ASSIGN");
         String type = argu.get(n.f0.accept(this, argu));
         if ( type  == null) {
             printErrMsg("unkown identifier");
