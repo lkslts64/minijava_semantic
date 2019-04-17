@@ -217,10 +217,13 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     public String visit(MethodDeclaration n, Scope argu) {
         String _ret=null;
         //Scope scope = sym.getFuncHash(n.f2.accept(this, argu),argu.getName());
-        Scope scope = sym.getFuncHash(n.f2.accept(this,null),argu.getName());
+        String fn = n.f2.accept(this,null);
+        Scope scope = sym.getFuncHash(fn,argu.getName());
         n.f8.accept(this, scope);
-        if ( sym.getFuncSignature(scope).getReturnType() != n.f10.accept(this, argu))
-            printErrMsg("not matched return types in func...");
+        String ret_type = n.f10.accept(this,scope);
+        String sign_ret_type = sym.getFuncSignature(scope).getReturnType();
+        if (ret_type == null || (sign_ret_type != ret_type && !(sym.checkSubType(sign_ret_type,ret_type))))
+            printErrMsg(">Error: Not matched return types in function " + fn );
         return _ret;
     }
 
@@ -280,11 +283,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f2 -> "]"
      */
     public String visit(ArrayType n, Scope argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        return n.f0.accept(this, argu) + n.f1.accept(this, argu) + n.f2.accept(this, argu);
     }
 
     /**
@@ -334,14 +333,18 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      */
     public String visit(AssignmentStatement n, Scope argu) {
         String _ret=null;
-        String type = argu.get(n.f0.accept(this, argu));
+        String type = n.f0.accept(this, argu);
         if ( type  == null) {
-            printErrMsg("unkown identifier");
+            return _ret;
         }
-        if ( type != "int[]")
+        /*if ( type != "int[]")
             printErrMsg("expected int[] type");
         if ( n.f2.accept(this, argu) != "int") {
             printErrMsg("expected int");
+        }*/
+        String expr_type = n.f2.accept(this,argu);
+        if (expr_type == null || (type != expr_type && !(sym.checkSubType(type,expr_type)))) {
+            printErrMsg(">Error: Different types in AssignmentStatement");
         }
         return _ret;
     }
@@ -357,17 +360,17 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      */
     public String visit(ArrayAssignmentStatement n, Scope argu) {
         String _ret=null;
-        String type = argu.get(n.f0.accept(this, argu));
+        String type = n.f0.accept(this, argu);
         if ( type  == null) {
-            printErrMsg("unkown identifier");
+            return _ret;
         }
         if ( type != "int[]")
-            printErrMsg("expected int[] type");
+            printErrMsg(">Error: expected int[] type");
         if ( n.f2.accept(this, argu) != "int") {
-            printErrMsg("expected int");
+            printErrMsg(">Error: offset of array should be of type int");
         }
         if ( n.f5.accept(this, argu) != "int") {
-            printErrMsg("expected int");
+            printErrMsg(">Error: RHS of ArrayAssignmentStatement should be of type int");
         }
         return _ret;
     }
@@ -441,11 +444,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f2 -> Clause()
      */
     public String visit(AndExpression n, Scope argu) {
-        if ( n.f0.accept(this, argu) != "boolean") {
-            printErrMsg(">Error:Trying to compare to operands that are not of type boolean");
-        }
-        if ( n.f2.accept(this, argu) != "boolean") {
-            printErrMsg(">Error:Trying to compare to operands that are not of type boolean");
+        if ( n.f0.accept(this, argu) != "boolean" || n.f2.accept(this, argu) != "boolean") {
+            printErrMsg(">Error: At least one operand in AndExpression is not of type boolean");
         }
         return "boolean";
     }
@@ -456,13 +456,9 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f2 -> PrimaryExpression()
      */
     public String visit(CompareExpression n, Scope argu) {
-        if ( n.f0.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to compare to operands that are not of type int");
-        }
-        if ( n.f2.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to compare to operands that are not of type int");
-        }
-        return "int";
+        if ( n.f0.accept(this, argu) != "int" || n.f2.accept(this, argu) != "int")
+            printErrMsg(">Error: At least one operand in CompareExpression is not of type int");
+        return "boolean";
     }
 
     /**
@@ -471,12 +467,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f2 -> PrimaryExpression()
      */
     public String visit(PlusExpression n, Scope argu) {
-        if ( n.f0.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to add to operands that are not of type int");
-        }
-        if ( n.f2.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to add to operands that are not of type int");
-        }
+        if ( n.f0.accept(this, argu) != "int" || n.f2.accept(this, argu) != "int")
+            printErrMsg(">Error: At least one operand in PlusExpression is not of type int");
         return "int";
     }
 
@@ -486,12 +478,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f2 -> PrimaryExpression()
      */
     public String visit(MinusExpression n, Scope argu) {
-        if ( n.f0.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to compare to operands that are not of type int");
-        }
-        if ( n.f2.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to compare to operands that are not of type int");
-        }
+        if ( n.f0.accept(this, argu) != "int" || n.f2.accept(this, argu) != "int")
+            printErrMsg(">Error: At least one operand in MinusExpression is not of type int");
         return "int";
     }
 
@@ -501,12 +489,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f2 -> PrimaryExpression()
      */
     public String visit(TimesExpression n, Scope argu) {
-        if ( n.f0.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to multiply to operands that are not of type int");
-        }
-        if ( n.f2.accept(this, argu) != "int") {
-            printErrMsg(">Error:Trying to multiply to operands that are not of type int");
-        }
+        if ( n.f0.accept(this, argu) != "int" || n.f2.accept(this, argu) != "int")
+            printErrMsg(">Error: At least one operand in TimesExpression is not of type int");
         return "int";
     }
 
@@ -519,7 +503,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     public String visit(ArrayLookup n, Scope argu) {
         String _ret=null;
         if ( n.f0.accept(this, argu) != "int[]")
-            printErrMsg(">Error:You attempted to lookup an array but symbol is not of type int[].");
+            printErrMsg(">Error:You attempted to lookup an array but expression is not of type int[].");
         if (n.f2.accept(this, argu) != "int") {
             printErrMsg(">Error:Offset of array lookup requires int type inisde brackets...");
         }
@@ -548,8 +532,9 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     //if receiver and function name exist, we return the returnType of function even if arg_list is not correct.
     public String visit(MessageSend n, Scope argu) {
         String _ret=null;
-        if ( n.f0.accept(this, argu) == null)       //if type of ID doesn't exists
-           return _ret;
+        if ( n.f0.accept(this, argu) == null) {
+            return _ret;
+        }
 
         ClassScope classScope = sym.getClassHash(n.f0.accept(this,argu));
         if ( classScope == null) {
@@ -558,7 +543,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
         }
         //search all parentclasses to find if the method exists.
         while ( classScope != null) {
-            Scope scope = sym.getFuncHash(n.f2.accept(this,argu),classScope.getName());
+            Scope scope = sym.getFuncHash(n.f2.accept(this,null),classScope.getName()); //call Identifier visit with argu=null.
             if ( scope != null) {
                 n.f4.accept(this, scope);
                 return sym.getReturnType(scope.getName(),classScope.getName());
@@ -582,7 +567,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
             printErrMsg(">Error: Different # of arguments in function " + argu.getName());
             return _ret;
         }
-        if ( type != n.f0.accept(this, argu)) {
+        String expr_type = n.f0.accept(this,argu);
+        if (expr_type == null || (type != expr_type && !(sym.checkSubType(type,expr_type)))) {
             printErrMsg(">Error:Argument type #" + argcount + " in function " + argu.getName() + " doesn't match");
         }
         argcount++;
@@ -610,7 +596,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
             printErrMsg(">Error: Different # of arguments in function " + argu.getName());
             return _ret;
         }
-        if ( type != n.f0.accept(this, argu)) {
+        String expr_type = n.f1.accept(this,argu);
+        if (expr_type == null || (type != expr_type && !(sym.checkSubType(type,expr_type)))) {
             printErrMsg(">Error:Argument type #" + argcount + " in function " + argu.getName() + " doesn't match");
         }
         argcount++;
@@ -635,30 +622,15 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      *       | AllocationExpression()
      *       | BracketExpression()
      */
-    //we want to return a Type at any case here. So, if it is an IDENTIFIER
-    //we find its Type by quering the Map.
+    //CHange this..more simple....
     public String visit(PrimaryExpression n, Scope argu) {
-        String type_or_ID = n.f0.accept(this,argu);
-        //IDENTIFIER case...
-       if  (!(sym.isDeclared(type_or_ID))) {
-           String type = argu.get(type_or_ID);
-           if (type == null) {
-               printErrMsg(">Error:Unknown symbol " + type_or_ID);
-               return null;
-           }
-           else
-               return type;
-       }
-       //Type case....
-       else
-           return type_or_ID;
+        return n.f0.accept(this,argu);
     }
 
     /**
      * f0 -> <INTEGER_LITERAL>
      */
     public String visit(IntegerLiteral n, Scope argu) {
-        //return n.f0.accept(this, argu);
         return "int";
     }
 
@@ -666,7 +638,6 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f0 -> "true"
      */
     public String visit(TrueLiteral n, Scope argu) {
-        //return n.f0.accept(this, argu);
         return "boolean";
     }
 
@@ -674,7 +645,6 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f0 -> "false"
      */
     public String visit(FalseLiteral n, Scope argu) {
-        //return n.f0.accept(this, argu);
         return "boolean";
     }
 
@@ -682,7 +652,15 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f0 -> <IDENTIFIER>
      */
     public String visit(Identifier n, Scope argu) {
-        return n.f0.accept(this, argu);
+        if ( argu == null) {
+            return n.f0.accept(this, argu);
+        } else {
+            String type =  argu.get(n.f0.accept(this, argu));
+            if ( type == null)
+                printErrMsg(">Error: Undeclared identifier " + n.f0.accept(this,argu));
+                System.out.println(n.f0.accept(this, argu));
+            return type;
+        }
     }
 
     /**
@@ -717,9 +695,10 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     public String visit(AllocationExpression n, Scope argu) {
         String _ret=null;
         n.f0.accept(this, argu);
-        String type = argu.get( n.f1.accept(this, argu));
+        //here ident is type so we call it with argu=null.
+        String type = argu.get( n.f1.accept(this, null));
         if ( type == null)
-            printErrMsg("Type " + n.f1.accept(this,argu) + " hasn't been declared");
+            printErrMsg("Type " + n.f1.accept(this,null) + " hasn't been declared");
         return type;
     }
 

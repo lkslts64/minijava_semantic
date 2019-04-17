@@ -63,6 +63,11 @@ public class ClassScope extends symboltable.Scope {
         return true;
     }
 
+    public boolean removeFuncBind(String key) {
+        if (funcbindings.remove(key) == null)
+            return false;
+        return true;
+    }
     //this can return null...
     public symboltable.FuncSignature getFuncBind(String key) {
         return funcbindings.get(key);

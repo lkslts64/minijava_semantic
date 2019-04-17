@@ -287,19 +287,22 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       //fill the hashtables of symbolTable class...
       boolean res = classScope.putFuncBind(funcName, funcSignature);
       boolean res2 = symbolTable.putFuncHash(funcName,classScope.getClassName(),scope);
+      //if we have function overloading within the same class, then return and pretend this function never apperead (i.e dont fill the Maps).
       if (res == false || res2  == false) {
           printErrMsg(">Error:Function " + funcName + " in class " + classScope.getClassName() + " declared twice");
+          return _ret;
       }
       boolean res3 = symbolTable.putScopeInheritanceChain(scope,classScope);
-      if ( res3 == false) {
+      if ( res3 == false)
           printErrMsg("PANIC. We have already put this scope to inheritance chain.");
-      }
       //fill the hashtable of class Scope ...
       n.f4.accept(this, scope);
       n.f7.accept(this, scope);
-
-       if (symbolTable.checkOverride(funcName,classScope.getClassName()) == false )
-           printErrMsg("");
+      //Currently implemented: if we have function overloading from a parent class, KEEP the maps associated with it it in SymbolTable.
+      //Idea not implemented yet and possibly never:if we have function overloading from a parent class, then REMOVE all from symbolTable all Maps associated with this class ...
+      // (i.e. we should remove funcSignature from ClassScope, Scope from funcHash and ClassScope from mother chain).
+      if (symbolTable.checkOverride(funcName,classScope.getClassName()) == false )
+          printErrMsg("");
       return _ret;
    }
 
@@ -376,11 +379,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
     * f2 -> "]"
     */
    public String visit(ArrayType n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
+       return n.f0.accept(this, argu) + n.f1.accept(this, argu) + n.f2.accept(this, argu);
    }
 
    /**
@@ -783,4 +782,5 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
    }
 
 }
+
 

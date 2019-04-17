@@ -37,6 +37,11 @@ public class SymbolTable {
         return true;
     }
 
+    public boolean removeScopeInheritanceChain(symboltable.Scope scope) {
+        if (ScopeInheritanceChain.remove(scope) == null)
+            return false;
+        return true;
+    }
     //caller should check whether this return null...
     public symboltable.ClassScope getScopeInheritanceChain(symboltable.Scope scope) {
         return ScopeInheritanceChain.get(scope);
@@ -62,6 +67,13 @@ public class SymbolTable {
             return false;
         }
         funcHash.put(p, sc);
+        return true;
+    }
+
+    public boolean removeFuncHash(String fn,String cn) {
+        PairStrings pairStrings = new PairStrings(fn,cn);
+        if(funcHash.remove(pairStrings) == null)
+            return false;
         return true;
     }
 
@@ -151,6 +163,23 @@ public class SymbolTable {
             System.out.println("PANIC. func sign hash.");
         return funcSignature;
     }
+
+    public boolean checkSubType(String left,String right) {
+        symboltable.ClassScope base = getClassHash(left);
+        symboltable.ClassScope derived = getClassHash(right);
+        if ( base == null || derived == null)
+            System.out.println("checkSubType error..one of types doesnt exist...Propably PANIC..");
+        //we know that left!=right when we enter this func so dont check if base==derived (initial_derived)...
+        derived = getScopeInheritanceChain(derived);
+        //climb the motherchain until you reach baseclass . if you dont, we have error...
+        while(derived != null) {
+            if (derived == base)
+                return true;
+            derived = getScopeInheritanceChain(derived);
+        }
+        return false;
+    }
+
     public boolean checkOverride(String fn, String cn) {
         symboltable.ClassScope scope = getClassHash(cn);
         symboltable.ClassScope parentscope = getScopeInheritanceChain(scope);
@@ -188,7 +217,7 @@ public class SymbolTable {
                     if (arg.get(i) == argp.get(i))
                         continue;
                     else {
-                        System.out.println(">Error:Funcion overloading detected (different arg types). Thats not possible in minijava");
+                        System.out.println(">Error:Funcion overloading detected at class " + cn + " at function " + fn + " (arg " + i +  " type is different). Thats not possible in minijava");
                         return false;
                     }
                 }
@@ -197,12 +226,13 @@ public class SymbolTable {
                 //if there is overloading because the check has been made from the class we found now.
                 System.out.println("this func overrides another from one of the parent class(es)");
                 return true;
+
             } else {
-                System.out.println(">Error:Funcion overloading detected (different # of args). Thats not possible in minijava");
+                System.out.println(">Error:Funcion overloading detected at class " + cn + " at function " + fn + ". Different # of arguments: (base class function has " + argp.size() + " arguments and this function has " + arg.size() + " ). Thats not possible in minijava");
                 return false;
             }
         } else {
-            System.out.println(">Error:Funcion overloading detected (different return values). Thats not possible in minijava");
+            System.out.println(">Error:Funcion overloading detected at class " + cn + " at function " + fn + " (different return values). Thats not possible in minijava");
             return false;
         }
     }
@@ -312,6 +342,7 @@ class PairStrings {
         }
         for ( int i = 0; i< this.s2.length(); i++ ) {
             result += s2.charAt(i);
+
         }
         return result;
     }
