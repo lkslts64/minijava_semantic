@@ -79,7 +79,7 @@ public class SymbolTable {
 
     public symboltable.Scope getFuncHash(String s1, String s2) {
         PairStrings p = new PairStrings(s1, s2);
-        System.out.println(p);
+        //System.out.println(p);
         symboltable.Scope scope = funcHash.get(p);
         if ( scope == null  ) {
             System.out.println("WHY");
@@ -128,6 +128,8 @@ public class SymbolTable {
     //should be called after parsing whole source file.
     //knownTypes can't be null, because our source should have at least one type (grammar specifies it).
     public boolean checkUndeclared() {
+        System.out.println(undeclared);
+        System.out.println(knownTypes);
         try {
             if (knownTypes.containsAll(undeclared)) {
                 return true;
@@ -137,8 +139,8 @@ public class SymbolTable {
             return true;
         }
         //undeclared.removeAll(knownTypes);
-        System.out.println(undeclared);
-        System.out.println(knownTypes);
+        //System.out.println(undeclared);
+        //System.out.println(knownTypes);
         //should throw parse error....
         return false;
     }
@@ -164,11 +166,27 @@ public class SymbolTable {
         return funcSignature;
     }
 
+    //find the type of an Identifier given his function scope (i.e class Scope).
+    //if type is not found at function scope, search method's class and all parent classes.
+    public String findType(symboltable.Scope scope,String id) {
+        String type;
+        while ( scope != null) {
+            type = scope.get(id);
+            if (type != null)
+                return type;
+            scope = getScopeInheritanceChain(scope);
+        }
+        return null;
+    }
+
     public boolean checkSubType(String left,String right) {
+        //check if one of types is primitive (no subtyping).
+        if ( !isUserDefinedType(left) || !isUserDefinedType(right))
+            return false;
         symboltable.ClassScope base = getClassHash(left);
         symboltable.ClassScope derived = getClassHash(right);
         if ( base == null || derived == null)
-            System.out.println("checkSubType error..one of types doesnt exist...Propably PANIC..");
+            System.out.println(">PANIC:checkSubType error..one of types doesnt exist...");
         //we know that left!=right when we enter this func so dont check if base==derived (initial_derived)...
         derived = getScopeInheritanceChain(derived);
         //climb the motherchain until you reach baseclass . if you dont, we have error...
@@ -178,6 +196,12 @@ public class SymbolTable {
             derived = getScopeInheritanceChain(derived);
         }
         return false;
+    }
+
+    public boolean isUserDefinedType(String type) {
+        if ( type == "int" || type == "boolean"|| type == "int[]")
+            return false;
+        return true;
     }
 
     public boolean checkOverride(String fn, String cn) {

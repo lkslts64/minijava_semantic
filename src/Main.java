@@ -22,7 +22,7 @@ class Main {
 			System.exit(0);
 		System.out.println("---------------------------------------------");
 		//sym.symbolTable.display_contents();
-		sym.symbolTable.print_offsets();
+		//sym.symbolTable.print_offsets();
 		TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
 		root.accept(typeCheckerVisitor,null);
 	}

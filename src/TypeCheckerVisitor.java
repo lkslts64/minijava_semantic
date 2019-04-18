@@ -75,6 +75,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     private SymbolTable sym;
     private boolean error;
     private int argcount;                   //used so we know the number of arg we check each time in Expression Rest and Expression List.
+    private boolean argsFlag;
     public TypeCheckerVisitor(SymbolTable sym) {
         this.sym = sym;
         error = false;
@@ -93,7 +94,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      */
     public String visit(Goal n, Scope argu) {
         String _ret=null;
-        //n.f0.accept(this, argu);
+        n.f0.accept(this, argu);
         n.f1.accept(this, argu);
         n.f2.accept(this, argu);
         return _ret;
@@ -119,26 +120,12 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f16 -> "}"
      * f17 -> "}"
      */
+    //argu=null here.
     public String visit(MainClass n, Scope argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        n.f8.accept(this, argu);
-        n.f9.accept(this, argu);
-        n.f10.accept(this, argu);
-        n.f11.accept(this, argu);
-        n.f12.accept(this, argu);
-        n.f13.accept(this, argu);
-        n.f14.accept(this, argu);
-        n.f15.accept(this, argu);
-        n.f16.accept(this, argu);
-        n.f17.accept(this, argu);
+        //just pass the scope of main to (statements)* ...
+        Scope scope = sym.getFuncHash(n.f6.accept(this,argu),n.f1.accept(this,argu));
+        n.f15.accept(this, scope);
         return _ret;
     }
 
@@ -158,11 +145,12 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f4 -> ( MethodDeclaration() )*
      * f5 -> "}"
      */
+    //argu is null here.
     public String visit(ClassDeclaration n, Scope argu) {
         String _ret=null;
         ClassScope classScope = sym.getClassHash(n.f1.accept(this, argu));
         if ( classScope == null) {
-            System.out.println("ERROR");
+            System.out.println("PANIC.Class doesn't exist.");
         }
         n.f4.accept(this, classScope);
         return _ret;
@@ -178,10 +166,14 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f6 -> ( MethodDeclaration() )*
      * f7 -> "}"
      */
+    //argu is null here.
     public String visit(ClassExtendsDeclaration n, Scope argu) {
         String _ret=null;
         n.f0.accept(this, argu);
         ClassScope classScope = sym.getClassHash(n.f1.accept(this, argu));
+        if ( classScope == null) {
+            System.out.println("PANIC.Class doesn't exist.");
+        }
         n.f6.accept(this, classScope);
         return _ret;
     }
@@ -419,7 +411,9 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      */
     public String visit(PrintStatement n, Scope argu) {
         String _ret=null;
-        n.f2.accept(this, argu);
+        String expr_type = n.f2.accept(this,argu);
+        if ( expr_type != "int" && expr_type != "boolean")
+            printErrMsg(">Error: Not compatible type in System.out.println()");
         return _ret;
     }
 
@@ -545,7 +539,10 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
         while ( classScope != null) {
             Scope scope = sym.getFuncHash(n.f2.accept(this,null),classScope.getName()); //call Identifier visit with argu=null.
             if ( scope != null) {
-                n.f4.accept(this, scope);
+                //problem we want to pass argu + scope there ....
+                argsFlag = true; n.f4.accept(this, scope);
+                argsFlag = false; n.f4.accept(this, argu);
+                //we will return the return type of the function even if there was a parse error at the evaluation of arguments.
                 return sym.getReturnType(scope.getName(),classScope.getName());
             }
             classScope = sym.getScopeInheritanceChain(classScope);
@@ -558,6 +555,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f0 -> Expression()
      * f1 -> ExpressionTail()
      */
+    //use ArrayDeque and store PairIntegerString -> argcount , type_of_first_call.when we enter this func we add a new layer to the Stack.
+    //we cant have only one argcount... we need a stack of them.
     public String visit(ExpressionList n, Scope argu) {
         String _ret=null;
         argcount = 0;
@@ -568,6 +567,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
             return _ret;
         }
         String expr_type = n.f0.accept(this,argu);
+        System.out.println(expr_type + " " + type);
         if (expr_type == null || (type != expr_type && !(sym.checkSubType(type,expr_type)))) {
             printErrMsg(">Error:Argument type #" + argcount + " in function " + argu.getName() + " doesn't match");
         }
@@ -655,10 +655,10 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
         if ( argu == null) {
             return n.f0.accept(this, argu);
         } else {
-            String type =  argu.get(n.f0.accept(this, argu));
+            String type =  sym.findType(argu,n.f0.accept(this,argu));
             if ( type == null)
                 printErrMsg(">Error: Undeclared identifier " + n.f0.accept(this,argu));
-                System.out.println(n.f0.accept(this, argu));
+            //System.out.println(n.f0.accept(this, argu));
             return type;
         }
     }
@@ -696,9 +696,9 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
         String _ret=null;
         n.f0.accept(this, argu);
         //here ident is type so we call it with argu=null.
-        String type = argu.get( n.f1.accept(this, null));
+        String type =  n.f1.accept(this, null);
         if ( type == null)
-            printErrMsg("Type " + n.f1.accept(this,null) + " hasn't been declared");
+            printErrMsg(">Errror:Type " + type + " hasn't been declared");
         return type;
     }
 

@@ -97,7 +97,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       n.f1.accept(this, argu);
       n.f2.accept(this, argu);
       if ( symbolTable.checkUndeclared() == false )
-          printErrMsg("Parse Error, undeclared type(s)");
+          printErrMsg(">Error: undeclared type(s)");
       System.out.println(error);
       if ( error ==  true) {
           return "ERROR";
@@ -140,11 +140,17 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
        else {
            symbolTable.addKnownTypes(curr);
        }
+       //Maybe: code inside --- is optional(except new Scope();).
+       //---------------------------
        ClassScope classScope = new ClassScope(0,0,curr);
        boolean res = symbolTable.putClassHash(curr,classScope);
        if ( res == false)
            printErrMsg(">PANIC we should have catched this error before.Error: Class declared more than once.");
-       Scope scope = new Scope("main");
+       String fn = n.f6.accept(this,argu);
+       Scope scope = new Scope(fn);
+       symbolTable.putScopeInheritanceChain(scope,classScope);
+       //------------------------------
+       symbolTable.putFuncHash(fn,curr,scope);
        n.f14.accept(this,scope);
        return _ret;
    }
@@ -208,10 +214,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       }
       //base class hasnt been declared yet. We parse the class like it has't any parents.
       if ( symbolTable.isDeclared(base) == false) {
-          //should throw error here . do not continue because we use base ...
-          //or System.exit(0); more simple
           printErrMsg(">Error:Extended class " + base + " has not been declared.");
-          //System.exit(0);
           classScope = new ClassScope(0,0,curr);
           boolean res = symbolTable.putClassHash(curr,classScope);
           if ( res == false)
