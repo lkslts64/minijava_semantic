@@ -25,54 +25,6 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
    // Auto class visitors--probably don't need to be overridden.
    //
 
-
-   public String visit(NodeList n, Scope argu) {
-      if (n.size() == 1)
-         return n.elementAt(0).accept(this,argu);
-      String _ret=null;
-      int _count=0;
-      for ( Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
-         e.nextElement().accept(this,argu);
-         _count++;
-      }
-      return _ret;
-   }
-
-   public String visit(NodeListOptional n, Scope argu) {
-      if ( n.present() ) {
-         if (n.size() == 1)
-            return n.elementAt(0).accept(this,argu);
-         String _ret=null;
-         int _count=0;
-         for ( Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
-            e.nextElement().accept(this,argu);
-            _count++;
-         }
-         return _ret;
-      }
-      else
-         return null;
-   }
-
-   public String visit(NodeOptional n, Scope argu) {
-      if ( n.present() )
-         return n.node.accept(this,argu);
-      else
-         return null;
-   }
-
-   public String visit(NodeSequence n, Scope argu) {
-      if (n.size() == 1)
-         return n.elementAt(0).accept(this,argu);
-      String _ret=null;
-      int _count=0;
-      for ( Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
-         e.nextElement().accept(this,argu);
-         _count++;
-      }
-      return _ret;
-   }
-
    public String visit(NodeToken n, Scope argu) { return n.tokenImage; }
 
    //
@@ -84,8 +36,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
     }
     public void printErrMsg(String err) {
         System.out.println(err);
-        if (error == false)
-            error = true;
+        error  = true;
     }
    /**
     * f0 -> MainClass()
@@ -173,7 +124,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
    public String visit(ClassDeclaration n, Scope argu) {
        String _ret=null;
        String curr = n.f1.accept(this,null);
-       if ( symbolTable.isDeclared(curr)== true) {
+       if ( symbolTable.isDeclared(curr) == true) {
            printErrMsg(">Error: Class " + curr + " declared more than once.Parser will not parse the contents of this class.");
            return _ret;
        }

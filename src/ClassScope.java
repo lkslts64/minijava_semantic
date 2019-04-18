@@ -29,9 +29,6 @@ public class ClassScope extends symboltable.Scope {
             return false;           //we dont want to provoke to further actions if this fails...
 
         }
-        else {
-            System.out.println("inserted to hashmap");
-        }
         if (value.equals("int")) {
             PairStringInteger pairStringInteger = new PairStringInteger(key,varsize);
             varoffsets.add(pairStringInteger);

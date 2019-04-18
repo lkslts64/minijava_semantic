@@ -80,11 +80,7 @@ public class SymbolTable {
     public symboltable.Scope getFuncHash(String s1, String s2) {
         PairStrings p = new PairStrings(s1, s2);
         //System.out.println(p);
-        symboltable.Scope scope = funcHash.get(p);
-        if ( scope == null  ) {
-            System.out.println("WHY");
-        }
-        return scope;
+        return funcHash.get(p);
     }
 
     public boolean isDeclared(String type) {
@@ -199,7 +195,7 @@ public class SymbolTable {
     }
 
     public boolean isUserDefinedType(String type) {
-        if ( type == "int" || type == "boolean"|| type == "int[]")
+        if ( type.equals("int")|| type.equals("boolean") || type.equals("int[]"))
             return false;
         return true;
     }
@@ -233,12 +229,12 @@ public class SymbolTable {
 
         //compare the two function signatures to examine whether is overloading or overriding.
         symboltable.FuncSignature funcSignature = scope.getFuncBind(fn);
-        if (funcSignature.getReturnType() == parentfuncSignature.getReturnType()) {
+        if (funcSignature.getReturnType().equals(parentfuncSignature.getReturnType())) {
             Vector<String> arg = funcSignature.getArgTypes();
             Vector<String> argp = parentfuncSignature.getArgTypes();
             if (argp.size() == arg.size()) {
                 for (int i = 0; i < argp.size(); i++) {
-                    if (arg.get(i) == argp.get(i))
+                    if (arg.get(i).equals(argp.get(i)))
                         continue;
                     else {
                         System.out.println(">Error:Funcion overloading detected at class " + cn + " at function " + fn + " (arg " + i +  " type is different). Thats not possible in minijava");
@@ -351,13 +347,14 @@ class PairStrings {
     public boolean equals(Object p) {
         if (p instanceof PairStrings) {
             PairStrings pairStrings = (PairStrings) p;
-            return (this.s1 == pairStrings.s1 && this.s2 == pairStrings.s2);
+            return (this.s1.equals(pairStrings.s1) && this.s2.equals(pairStrings.s2));
         }
         else
             System.out.println("PANIC . Pairstrings");
             return false;
     }
 
+    //compute a classic hashcode for strings...
     @Override
     public int hashCode() {
         int result = 0;
@@ -371,14 +368,3 @@ class PairStrings {
         return result;
     }
 }
-    /*public fillMissingOffsets(HashSet<String> set) {
-        for (symboltable.ClassScope c : classHash.values()) {
-            for (String s : set) {
-                if ( c.hasValue(s)) {
-                    int sz = findSizeof(s);
-
-                    //go to vector of offsets and fill it ...
-                }
-            }
-        }
-    }*/

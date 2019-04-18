@@ -355,7 +355,6 @@ class MyVisitor extends Visitor {
 
     public int visit(Tree n){
 	int nti ;
-	
 
 	if (n.GetHas_Right()){
 	    r = n.GetRight() ;
@@ -372,18 +371,4 @@ class MyVisitor extends Visitor {
 	return 0;
     }
 
-}
-class MyVisitor  {
-	int i;
-	int j;
-	public boolean visit(Tree n) {
-		return true;
-	}
-
-}
-class A extends MyVisitor {
-	int a;
-	public int visit(Tree n,int i) {
-		return 5;
-	}
 }

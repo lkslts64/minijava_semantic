@@ -23,6 +23,8 @@ public class FuncSignature {
         }
     }
 
+    public int getArgSize() { return argTypes.size(); }
+
 
     public Vector<String> getArgTypes() {
         return argTypes;
