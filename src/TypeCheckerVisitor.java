@@ -156,7 +156,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
         n.f8.accept(this, scope);
         String ret_type = n.f10.accept(this,scope);
         String sign_ret_type = sym.getFuncSignature(scope).getReturnType();
-        if (ret_type == null || !(sign_ret_type.equals(ret_type) && !(sym.checkSubType(sign_ret_type,ret_type))))
+        if (ret_type == null || (!sign_ret_type.equals(ret_type) && !(sym.checkSubType(sign_ret_type,ret_type))))
             printErrMsg(">Error: Not matched return types in function " + fn );
         return _ret;
     }
@@ -193,7 +193,8 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
             return _ret;
         }
         String expr_type = n.f2.accept(this,argu);
-        if (expr_type == null || !(type.equals(expr_type) && !(sym.checkSubType(type,expr_type)))) {
+        //System.out.println(expr_type + type);
+        if (expr_type == null || (!type.equals(expr_type) && !(sym.checkSubType(type,expr_type)))) {
             printErrMsg(">Error: Different types in AssignmentStatement");
         }
         return _ret;
@@ -393,7 +394,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
             }
             classScope = sym.getScopeInheritanceChain(classScope);
         }
-        printErrMsg(">Error:Type " + pr_type + " has no method with name " + n.f2.accept(this,argu));
+        printErrMsg(">Error:Type " + pr_type + " has no method with name " + n.f2.accept(this,null));
         return _ret;
     }
 
@@ -408,7 +409,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
             pairIntScope.argcount++;
             return false;
         }
-        if (expr_type == null || !(type.equals(expr_type) && !(sym.checkSubType(type,expr_type)))) {
+        if (expr_type == null || (!type.equals(expr_type) && !(sym.checkSubType(type,expr_type)))) {
             printErrMsg(">Error:Argument types #" + pairIntScope.argcount + " when calling function " + pairIntScope.scope.getName() + " inside " + argu.getName()  + " doesn't match");
         }
         //increment argcount before jumping to the next argument evaluation.
