@@ -1,3 +1,4 @@
+// This class represents a function scope.
 package symboltable;
 
 import java.util.HashMap;

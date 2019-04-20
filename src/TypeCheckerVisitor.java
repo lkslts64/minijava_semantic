@@ -33,12 +33,12 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
     public TypeCheckerVisitor(SymbolTable sym) {
         this.sym = sym;
         scopeStack = new ArrayDeque<>();
-        error = true;
+        error = false;
     }
 
     public void printErrMsg(String err) {
         System.out.println(err);
-        error = false;
+        error = true;
     }
 
     /**
@@ -52,8 +52,10 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
         n.f1.accept(this, argu);
         n.f2.accept(this, argu);
         if (!scopeStack.isEmpty())
-            System.out.println("ERROR finished stack not empty");
-        return _ret;
+            System.out.println("PANIC. finished stack not empty");
+        if (this.error == true)
+            return "ERROR";
+        return "OK";
     }
 
     /**
@@ -368,7 +370,7 @@ public class  TypeCheckerVisitor extends GJDepthFirst<String, Scope> {
      * f4 -> ( ExpressionList() )?
      * f5 -> ")"
      */
-    //if receiver and function name exist, we return the returnType of function even if arg_list is not correct.
+    //if receiver and function name are valid, we return the returnType of function even if arg_list is not correct.
     public String visit(MessageSend n, Scope argu) {
         String _ret=null;
         String pr_type = n.f0.accept(this,argu);

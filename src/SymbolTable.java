@@ -8,11 +8,10 @@ import java.util.Vector;
 
 public class SymbolTable {
 
-    private HashMap<symboltable.Scope, symboltable.ClassScope> ScopeInheritanceChain;
-    private HashMap<String, symboltable.ClassScope> classHash;   // Classname,classScope .easy access to class
-    private HashMap<PairStrings, symboltable.Scope> funcHash; // key_funcname,classScope
-    //second field of undeclared should be null if vardecl was at function scope.
-    private HashSet<String> undeclared;              // Type,Class_that_type_found .Types that have not been declared yet
+    private HashMap<symboltable.Scope, symboltable.ClassScope> ScopeInheritanceChain; //Scope -> ClassScope
+    private HashMap<String, symboltable.ClassScope> classHash;   // Classname -> ClassScope .easy access to class
+    private HashMap<PairStrings, symboltable.Scope> funcHash; // funcname-classname -> ClassScope
+    private HashSet<String> undeclared;                     //types that we see and are not declared yet.
     private HashSet<String> knownTypes;                     //all known types .
 
 
@@ -28,39 +27,41 @@ public class SymbolTable {
         knownTypes.add("boolean");
     }
 
+
+    //throw error if we try to put the same key in Map, that is if this func returns false..
     public boolean putScopeInheritanceChain(symboltable.Scope scope, symboltable.ClassScope classScope) {
         if (ScopeInheritanceChain.containsKey(scope)) {
-            //caller or this func should throw parse error in this case...
             return false;
         }
         ScopeInheritanceChain.put(scope, classScope);
         return true;
     }
 
+    //this is not used...
     public boolean removeScopeInheritanceChain(symboltable.Scope scope) {
         if (ScopeInheritanceChain.remove(scope) == null)
             return false;
         return true;
     }
-    //caller should check whether this return null...
     public symboltable.ClassScope getScopeInheritanceChain(symboltable.Scope scope) {
         return ScopeInheritanceChain.get(scope);
     }
 
+    //throw error if we try to put the same key in Map, that is if this func returns false..
     public boolean putClassHash(String type, symboltable.ClassScope cs) {
         if (classHash.containsKey(type)) {
-            //caller or this func should throw parse error in this case...
             return false;
         }
         classHash.put(type, cs);
         return true;
     }
 
-    //caller should check whether this return null...
     public symboltable.ClassScope getClassHash(String key) {
         return classHash.get(key);
     }
 
+
+    //throw error if we try to put the same key in Map, that is if this func returns false..
     public boolean putFuncHash(String fn, String cn, symboltable.Scope sc) {
         PairStrings p = new PairStrings(fn, cn);
         if (funcHash.containsKey(p)) {
@@ -70,6 +71,7 @@ public class SymbolTable {
         return true;
     }
 
+    //this is not used..
     public boolean removeFuncHash(String fn,String cn) {
         PairStrings pairStrings = new PairStrings(fn,cn);
         if(funcHash.remove(pairStrings) == null)
@@ -95,7 +97,7 @@ public class SymbolTable {
         undeclared.add(type);
     }
 
-    //call this func to find the var size of a base class.
+    //Find how many bytes a base class needs for its fields.
     public int findVarSizeof(String type) {
         symboltable.ClassScope classScope = getClassHash(type);
         if (classScope == null)
@@ -103,7 +105,7 @@ public class SymbolTable {
         return classScope.getVarSize();
     }
 
-    //call this func to find the func size of a base class.
+    //Find how many bytes a base class needs for its functions.
     public int findFuncSizeof(String type) {
         symboltable.ClassScope classScope = getClassHash(type);
         if (classScope == null)
@@ -111,6 +113,7 @@ public class SymbolTable {
         return classScope.getFuncSize();
     }
 
+    //Find class name given a function scope.
     public String getClass(symboltable.Scope scope) {
         symboltable.ClassScope classScope = getScopeInheritanceChain(scope);
         if ( classScope == null) {
@@ -122,27 +125,20 @@ public class SymbolTable {
     }
 
     //should be called after parsing whole source file.
-    //knownTypes can't be null, because our source should have at least one type (grammar specifies it).
+    //knownTypes can't be null (see constructor of this class).
     public boolean checkUndeclared() {
-        System.out.println(undeclared);
-        System.out.println(knownTypes);
         try {
-            if (knownTypes.containsAll(undeclared)) {
+            if (knownTypes.containsAll(undeclared))
                 return true;
-            }
+            else
+                return  false;
         //if undeclared is null, still not unresolved types so we return true.
         } catch (NullPointerException ex) {
             return true;
         }
-        //undeclared.removeAll(knownTypes);
-        //System.out.println(undeclared);
-        //System.out.println(knownTypes);
-        //should throw parse error....
-        return false;
     }
 
-    //this func should be called after symbol table creation.
-    //find return type of a func given its primary key.
+    //find return type of a func.
     public String getReturnType(String fn,String cn) {
         symboltable.ClassScope scope = getClassHash(cn);
         if (scope == null)
@@ -152,6 +148,7 @@ public class SymbolTable {
             return null;
         return funcSignature.getReturnType();
     }
+
     public symboltable.FuncSignature getFuncSignature(symboltable.Scope scope) {
         symboltable.ClassScope classScope = getScopeInheritanceChain(scope);
         if ( classScope == null)
@@ -162,7 +159,7 @@ public class SymbolTable {
         return funcSignature;
     }
 
-    //find the type of an Identifier given his function scope (i.e class Scope).
+    //find the type of an Identifier given his function scope.
     //if type is not found at function scope, search method's class and all parent classes.
     public String findType(symboltable.Scope scope,String id) {
         String type;
@@ -175,8 +172,9 @@ public class SymbolTable {
         return null;
     }
 
+    //check if type 'right' is subtype of supertype 'left'.
     public boolean checkSubType(String left,String right) {
-        //check if one of types is primitive (no subtyping).
+        //if one of types is primitive then no subtyping.
         if ( !isUserDefinedType(left) || !isUserDefinedType(right))
             return false;
         symboltable.ClassScope base = getClassHash(left);
@@ -185,7 +183,7 @@ public class SymbolTable {
             System.out.println(">PANIC:checkSubType error..one of types doesnt exist...");
         //we know that left!=right when we enter this func so dont check if base==derived (initial_derived)...
         derived = getScopeInheritanceChain(derived);
-        //climb the motherchain until you reach baseclass . if you dont, we have error...
+        //climb the motherchain until you reach baseclass.
         while(derived != null) {
             if (derived == base)
                 return true;
@@ -200,33 +198,27 @@ public class SymbolTable {
         return true;
     }
 
+    //check if given method overrides another one from its base class (if it has one).
+    //Also, fill the vector for method offsets if method doesn't override one from its base class.
     public boolean checkOverride(String fn, String cn) {
         symboltable.ClassScope scope = getClassHash(cn);
         symboltable.ClassScope parentscope = getScopeInheritanceChain(scope);
         symboltable.FuncSignature parentfuncSignature = null;
+        //search if one of parent classes has any method with the same method
         while (parentscope != null) {
-            /*if (parentscope == null) {
-                System.out.println("NO OVERRIDE");
-                scope.addFuncOffsets(fn, scope.getFuncSize());
-                scope.addFuncSize();
-                return true;
-            }*/
             parentfuncSignature = parentscope.getFuncBind(fn);
             if (parentfuncSignature != null) {
-                //add func to offset list and add funcsizecounter.
-                /*scope.addFuncOffsets(fn, scope.getFuncSize());
-                scope.addFuncSize();
-                return true;*/
                 break;
             }
             parentscope = getScopeInheritanceChain(parentscope);
         }
+        //no overriding case
         if ( parentscope == null) {
             scope.addFuncOffsets(fn, scope.getFuncSize());
             scope.addFuncSize();
             return true;
         }
-
+        //overriding case
         //compare the two function signatures to examine whether is overloading or overriding.
         symboltable.FuncSignature funcSignature = scope.getFuncBind(fn);
         if (funcSignature.getReturnType().equals(parentfuncSignature.getReturnType())) {
@@ -241,9 +233,8 @@ public class SymbolTable {
                         return false;
                     }
                 }
-                //we dont need to addFuncSize neither to add to funcoffsets...
-                //additionaly, we dont need to check if other classes have same func signature or
-                //if there is overloading because the check has been made from the class we found now.
+                //overriding found... we dont need to addFuncSize neither to add to funcoffsets...
+                //additionaly, we dont need to check if other superclasses have same func signature or if there is overloading because the check has been made by them.
                 System.out.println("this func overrides another from one of the parent class(es)");
                 return true;
 
@@ -271,6 +262,7 @@ public class SymbolTable {
     }
 
 
+    //just for debuging purposes
     public void display_contents() {
         //classes...
         for ( String s : classHash.keySet()) {
@@ -328,7 +320,6 @@ public class SymbolTable {
 
     }
 }
-//restore these fields to private.
 class PairStrings {
     public String s1;
     public String s2;

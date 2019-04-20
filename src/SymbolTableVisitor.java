@@ -51,13 +51,9 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       if ( symbolTable.checkUndeclared() == false )
           printErrMsg(">Error: undeclared type(s)");
       System.out.println(error);
-      if ( error ==  true) {
+      if (this.error ==  true)
           return "ERROR";
-      }
-      else {
-          symbolTable.print_offsets();
-          return "OK";
-      }
+      return "OK";
    }
 
    /**
@@ -164,7 +160,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       else {
           symbolTable.addKnownTypes(curr);
       }
-      //base class hasnt been declared yet. We parse the class like it has't any parents.
+      //base class hasnt been declared yet (error). We parse the class like it has't any parents.
       if ( symbolTable.isDeclared(base) == false) {
           printErrMsg(">Error:Extended class " + base + " has not been declared.");
           classScope = new ClassScope(0,0,curr);
@@ -197,13 +193,6 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
     */
    public String visit(VarDeclaration n, Scope argu) {
       String _ret=null;
-      /*try {
-          Scope scope = (Scope) argu;
-          scope.put(n.f1.accept(this, argu),n.f0.accept(this, argu));
-      }
-      catch (ClassCastException ex) {
-          printErrMsg("PANICE . EXPECTED Scope class.");
-      }*/
       if ( argu.put(n.f1.accept(this, argu),n.f0.accept(this, argu)) == false ) {
           printErrMsg(">Error:Variable " + n.f1.accept(this,argu) + " with type "+ n.f0.accept(this,argu) + " declared more than once.");
       }
@@ -240,17 +229,14 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       Scope scope = new Scope(funcName);
       FuncSignature funcSignature = new FuncSignature(n.f1.accept(this,null));
       //fill the hashtables of symbolTable class...
-      boolean res = classScope.putFuncBind(funcName, funcSignature);
-      boolean res2 = symbolTable.putFuncHash(funcName,classScope.getClassName(),scope);
-      //if we have function overloading within the same class, then return and pretend this function never apperead (i.e dont fill the Maps).
-      if (res == false || res2  == false) {
+      //if we have function overloading within the same class, then return and pretend this function never apperead (i.e dont fill the Maps and dont parse the vardecls).
+      if ( classScope.putFuncBind(funcName,funcSignature) == false || symbolTable.putFuncHash(funcName,classScope.getName(),scope) == false) {
           printErrMsg(">Error:Function " + funcName + " in class " + classScope.getClassName() + " declared twice");
           return _ret;
       }
-      boolean res3 = symbolTable.putScopeInheritanceChain(scope,classScope);
-      if ( res3 == false)
+       //fill the hashtable of class Scope ...
+      if (symbolTable.putScopeInheritanceChain(scope,classScope) == false)
           printErrMsg("PANIC. We have already put this scope to inheritance chain.");
-      //fill the hashtable of class Scope ...
       n.f4.accept(this, scope);
       n.f7.accept(this, scope);
       //Currently implemented: if we have function overloading from a parent class, KEEP the maps associated with it it in SymbolTable.
@@ -261,16 +247,6 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       return _ret;
    }
 
-   /**
-    * f0 -> FormalParameter()
-    * f1 -> FormalParameterTail()
-    */
-   public String visit(FormalParameterList n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      return _ret;
-   }
 
    /**
     * f0 -> Type()
@@ -296,23 +272,6 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       return _ret;
    }
 
-   /**
-    * f0 -> ( FormalParameterTerm() )*
-    */
-   public String visit(FormalParameterTail n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> ","
-    * f1 -> FormalParameter()
-    */
-   public String visit(FormalParameterTerm n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      return _ret;
-   }
 
    /**
     * f0 -> ArrayType()
@@ -336,406 +295,7 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
    public String visit(ArrayType n, Scope argu) {
        return n.f0.accept(this, argu) + n.f1.accept(this, argu) + n.f2.accept(this, argu);
    }
-
-   /**
-    * f0 -> "boolean"
-    */
-   public String visit(BooleanType n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> "int"
-    */
-   public String visit(IntegerType n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> Block()
-    *       | AssignmentStatement()
-    *       | ArrayAssignmentStatement()
-    *       | IfStatement()
-    *       | WhileStatement()
-    *       | PrintStatement()
-    */
-   public String visit(Statement n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> "{"
-    * f1 -> ( Statement() )*
-    * f2 -> "}"
-    */
-   public String visit(Block n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> Identifier()
-    * f1 -> "="
-    * f2 -> Expression()
-    * f3 -> ";"
-    */
-   public String visit(AssignmentStatement n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> Identifier()
-    * f1 -> "["
-    * f2 -> Expression()
-    * f3 -> "]"
-    * f4 -> "="
-    * f5 -> Expression()
-    * f6 -> ";"
-    */
-   public String visit(ArrayAssignmentStatement n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      n.f4.accept(this, argu);
-      n.f5.accept(this, argu);
-      n.f6.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> "if"
-    * f1 -> "("
-    * f2 -> Expression()
-    * f3 -> ")"
-    * f4 -> Statement()
-    * f5 -> "else"
-    * f6 -> Statement()
-    */
-   public String visit(IfStatement n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      n.f4.accept(this, argu);
-      n.f5.accept(this, argu);
-      n.f6.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> "while"
-    * f1 -> "("
-    * f2 -> Expression()
-    * f3 -> ")"
-    * f4 -> Statement()
-    */
-   public String visit(WhileStatement n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      n.f4.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> "System.out.println"
-    * f1 -> "("
-    * f2 -> Expression()
-    * f3 -> ")"
-    * f4 -> ";"
-    */
-   public String visit(PrintStatement n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      n.f4.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> AndExpression()
-    *       | CompareExpression()
-    *       | PlusExpression()
-    *       | MinusExpression()
-    *       | TimesExpression()
-    *       | ArrayLookup()
-    *       | ArrayLength()
-    *       | MessageSend()
-    *       | Clause()
-    */
-   public String visit(Expression n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> Clause()
-    * f1 -> "&&"
-    * f2 -> Clause()
-    */
-   public String visit(AndExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "<"
-    * f2 -> PrimaryExpression()
-    */
-   public String visit(CompareExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "+"
-    * f2 -> PrimaryExpression()
-    */
-   public String visit(PlusExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "-"
-    * f2 -> PrimaryExpression()
-    */
-   public String visit(MinusExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "*"
-    * f2 -> PrimaryExpression()
-    */
-   public String visit(TimesExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "["
-    * f2 -> PrimaryExpression()
-    * f3 -> "]"
-    */
-   public String visit(ArrayLookup n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "."
-    * f2 -> "length"
-    */
-   public String visit(ArrayLength n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> PrimaryExpression()
-    * f1 -> "."
-    * f2 -> Identifier()
-    * f3 -> "("
-    * f4 -> ( ExpressionList() )?
-    * f5 -> ")"
-    */
-   public String visit(MessageSend n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      n.f4.accept(this, argu);
-      n.f5.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> Expression()
-    * f1 -> ExpressionTail()
-    */
-   public String visit(ExpressionList n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> ( ExpressionTerm() )*
-    */
-   public String visit(ExpressionTail n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> ","
-    * f1 -> Expression()
-    */
-   public String visit(ExpressionTerm n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> NotExpression()
-    *       | PrimaryExpression()
-    */
-   public String visit(Clause n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> IntegerLiteral()
-    *       | TrueLiteral()
-    *       | FalseLiteral()
-    *       | Identifier()
-    *       | ThisExpression()
-    *       | ArrayAllocationExpression()
-    *       | AllocationExpression()
-    *       | BracketExpression()
-    */
-   public String visit(PrimaryExpression n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> <INTEGER_LITERAL>
-    */
-   public String visit(IntegerLiteral n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> "true"
-    */
-   public String visit(TrueLiteral n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> "false"
-    */
-   public String visit(FalseLiteral n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> <IDENTIFIER>
-    */
-   public String visit(Identifier n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> "this"
-    */
-   public String visit(ThisExpression n, Scope argu) {
-      return n.f0.accept(this, argu);
-   }
-
-   /**
-    * f0 -> "new"
-    * f1 -> "int"
-    * f2 -> "["
-    * f3 -> Expression()
-    * f4 -> "]"
-    */
-   public String visit(ArrayAllocationExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      n.f4.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> "new"
-    * f1 -> Identifier()
-    * f2 -> "("
-    * f3 -> ")"
-    */
-   public String visit(AllocationExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      n.f3.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> "!"
-    * f1 -> Clause()
-    */
-   public String visit(NotExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      return _ret;
-   }
-
-   /**
-    * f0 -> "("
-    * f1 -> Expression()
-    * f2 -> ")"
-    */
-   public String visit(BracketExpression n, Scope argu) {
-      String _ret=null;
-      n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
-      return _ret;
-   }
-
 }
+
 
 

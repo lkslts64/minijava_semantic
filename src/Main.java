@@ -21,12 +21,11 @@ class Main {
                 SymbolTableVisitor sym = new SymbolTableVisitor();
                 Goal root = parser.Goal();
                 //System.out.println(root.accept(sym));
-                if (root.accept(sym, null) == "ERROR")
-                    System.exit(0);
-                //sym.symbolTable.display_contents();
-                //sym.symbolTable.print_offsets();
-                TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
-                root.accept(typeCheckerVisitor, null);
+                if (root.accept(sym, null).equals("OK")) {
+                    TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
+                    if (root.accept(typeCheckerVisitor, null).equals("OK"))
+                        sym.symbolTable.print_offsets();
+                }
             } catch (ParseException ex) {
                 System.out.println(ex.getMessage());
             } catch (FileNotFoundException ex) {

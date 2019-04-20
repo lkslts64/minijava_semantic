@@ -1,3 +1,4 @@
+// This class represents a class scope.
 package symboltable;
 
 
