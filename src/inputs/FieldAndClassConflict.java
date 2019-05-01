@@ -13,6 +13,7 @@ class A {
     A A;
 
     public int B(){
+		A = new A();
 	return 1;
     }
 }

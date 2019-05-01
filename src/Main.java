@@ -9,7 +9,7 @@ import symboltable.*;
 class Main {
     public static void main (String [] args) {
         if (args.length < 1) {
-            System.err.println("Usage: java Driver <inputFile>");
+            System.err.println("Usage: java Main <inputFile1> <inputFile2>  <inputFile3> ... <inputFileN>    ");
             System.exit(1);
         }
         for (int i = 0; i < args.length; i++) {
@@ -20,7 +20,7 @@ class Main {
                 MiniJavaParser parser = new MiniJavaParser(fis);
                 SymbolTableVisitor sym = new SymbolTableVisitor();
                 Goal root = parser.Goal();
-                //System.out.println(root.accept(sym));
+                System.out.println("Parsing " + args[i] + "...");
                 if (root.accept(sym, null).equals("OK")) {
                     TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
                     if (root.accept(typeCheckerVisitor, null).equals("OK"))

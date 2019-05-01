@@ -23,6 +23,9 @@ class B extends A{
     public int foo(int j,boolean k) {
       return 0;
     }
+    public int foo(int j,int[] k) {
+      return 0;
+    }
     public boolean bla() {
       return true;
     }

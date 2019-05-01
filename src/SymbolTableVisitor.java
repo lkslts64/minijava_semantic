@@ -50,7 +50,6 @@ public class SymbolTableVisitor extends GJDepthFirst<String,Scope> {
       n.f2.accept(this, argu);
       if ( symbolTable.checkUndeclared() == false )
           printErrMsg(">Error: undeclared type(s)");
-      System.out.println(error);
       if (this.error ==  true)
           return "ERROR";
       return "OK";

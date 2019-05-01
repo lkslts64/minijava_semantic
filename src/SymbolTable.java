@@ -235,7 +235,6 @@ public class SymbolTable {
                 }
                 //overriding found... we dont need to addFuncSize neither to add to funcoffsets...
                 //additionaly, we dont need to check if other superclasses have same func signature or if there is overloading because the check has been made by them.
-                System.out.println("this func overrides another from one of the parent class(es)");
                 return true;
 
             } else {
