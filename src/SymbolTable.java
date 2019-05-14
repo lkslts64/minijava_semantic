@@ -4,6 +4,7 @@ import symboltable.PairStringInteger;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.Vector;
 
 public class SymbolTable {
@@ -58,6 +59,10 @@ public class SymbolTable {
 
     public symboltable.ClassScope getClassHash(String key) {
         return classHash.get(key);
+    }
+
+    public Set<String> getClassHash() {
+        return classHash.keySet();
     }
 
 
@@ -235,6 +240,12 @@ public class SymbolTable {
                 }
                 //overriding found... we dont need to addFuncSize neither to add to funcoffsets...
                 //additionaly, we dont need to check if other superclasses have same func signature or if there is overloading because the check has been made by them.
+                //search funcOffsets of parent class that we found the the same function name (its the only class that contains this name
+                // in funcoffsets.
+                int method_off = parentscope.searchFuncOffset(fn);
+                if (method_off < 0)
+                    System.out.println("PANIC!no offset found in checkOverride");
+                scope.addOverriden(fn,method_off);     //applied only at HW3.
                 return true;
 
             } else {
@@ -254,10 +265,59 @@ public class SymbolTable {
             for (PairStringInteger p : classScope.getVaroffsets()) {
                 System.out.println(cn + p);
             }
+            for(PairStringInteger over: classScope.getOverriden()) {
+                System.out.println(cn + over);
+            }
             for (PairStringInteger p : classScope.getFuncoffsets()) {
                 System.out.println(cn + p);
             }
+            System.out.println("VTABLEEEEEEEEEEEEEEEE");
+            PairStrings[] res = getVtable(s);
+            if (res == null) {
+                System.out.println(s + "null");
+                continue;
+            }
+            for (PairStrings pairStrings : res) {
+                System.out.println(pairStrings);
+            }
         }
+    }
+
+    public PairStrings[][] getVtables() {
+        int class_num = classHash.size();
+        PairStrings[][] vtables = new PairStrings[class_num][];
+        int i = 0;
+        for ( String c : classHash.keySet()) {
+            vtables[i] = getVtable(c);
+        }
+        return vtables;
+    }
+
+    //creates a v-table like structure for one class. Specificaly, it creates an array of (funcName,className) pairs whose index is identical to the index of
+    // the v-table of this class.
+    public PairStrings[] getVtable(String cn) {
+        symboltable.ClassScope classScope = getClassHash(cn);
+        int func_sz = classScope.getFuncSize();
+        if (func_sz == 0)
+            return null;
+        int arr_sz = func_sz / 8; //size of array that we will return..
+        PairStrings[] vtable = new PairStrings[arr_sz];
+        //HashSet<String> overriden = new HashSet<>();
+
+        //for this class andd all parent classes, insert all methods and inherited methods specifying the class at each.
+        while (classScope != null) {
+            for (PairStringInteger p : classScope.getFuncoffsets()) {
+                if (vtable[p.getOffset() / 8] == null)
+                    vtable[p.getOffset() / 8] = new PairStrings(p.getFuncname(), classScope.getName());
+            }
+            for (PairStringInteger p: classScope.getOverriden()) {
+                if (vtable[p.getOffset() / 8] == null)
+                    vtable[p.getOffset() / 8] = new PairStrings(p.getFuncname(), classScope.getName());
+            }
+            classScope = getScopeInheritanceChain(classScope);
+        }
+        return vtable;
+
     }
 
 
@@ -319,7 +379,7 @@ public class SymbolTable {
 
     }
 }
-class PairStrings {
+/*class PairStrings {
     public String s1;
     public String s2;
 
@@ -357,4 +417,4 @@ class PairStrings {
         }
         return result;
     }
-}
+}*/

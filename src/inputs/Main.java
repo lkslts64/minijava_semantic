@@ -64,3 +64,13 @@ class B extends ArrayTest {
         return intArray.length;
     }
 }
+class A{
+
+    int x;
+    int a_var;
+}
+
+class C extends A{
+    int x;
+    int b_var;
+}

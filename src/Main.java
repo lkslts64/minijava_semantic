@@ -1,3 +1,5 @@
+import myvisitors.*;
+import myvisitors.LLVMGenerator;
 import myvisitors.SymbolTableVisitor;
 import myvisitors.TypeCheckerVisitor;
 import syntaxtree.*;
@@ -25,6 +27,8 @@ class Main {
                     TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
                     if (root.accept(typeCheckerVisitor, null).equals("OK"))
                         sym.symbolTable.print_offsets();
+                        LLVMGenerator generator = new LLVMGenerator(sym.symbolTable);
+                        root.accept(generator,null);
                 }
             } catch (ParseException ex) {
                 System.out.println(ex.getMessage());

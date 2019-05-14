@@ -2,6 +2,8 @@
 package symboltable;
 
 
+import symboltable.PairStringInteger;
+
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -11,6 +13,7 @@ public class ClassScope extends symboltable.Scope {
     //we first add values to vectors and after increment sizes;
     private Vector<PairStringInteger> funcoffsets;
     private Vector<PairStringInteger> varoffsets;
+    private Vector<PairStringInteger> overriden;
     private int varsize;
     private int funcsize;
 
@@ -19,6 +22,7 @@ public class ClassScope extends symboltable.Scope {
         funcbindings = new HashMap<>();
         funcoffsets = new Vector<>();
         varoffsets = new Vector<>();
+        overriden = new Vector<>();
         varsize = initvarsz;
         funcsize = initfuncsize;
     }
@@ -86,9 +90,25 @@ public class ClassScope extends symboltable.Scope {
         PairStringInteger p = new PairStringInteger(s,i);
         varoffsets.add(p);
     }
+    public void addOverriden(String s,Integer i) {
+        PairStringInteger pairStringInteger = new PairStringInteger(s,i);
+        overriden.add(pairStringInteger);
+    }
+
+    public Vector<PairStringInteger> getOverriden() {
+        return overriden;
+    }
 
     public Vector<PairStringInteger> getFuncoffsets() {
         return funcoffsets;
+    }
+
+    public int searchFuncOffset(String fn) {
+        for ( PairStringInteger p: funcoffsets) {
+            if (p.getFuncname().equals(fn))
+                return p.getOffset();
+        }
+        return -1;
     }
 
     public Vector<PairStringInteger> getVaroffsets() {

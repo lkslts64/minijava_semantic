@@ -8,11 +8,11 @@
 	- Semantic analysis is done with the help of two visitors. The first one (SymbolTableVisitor) fills the SymbolTable structure and the seconds one performs
 	type checking (TypeCheckerVisitor). Both of them are located in package 'myvisitors'.
 	- class Scope represents the scope of a method. That is, a map of <IDENTIFIERS,TYPES>.
-	- class ClassScope represents the scope of a class and extends Scope. It contains information about the method signatures and the offsets that will be printed
-	if the input is correct.
+	- class ClassScope represents the scope of a class and extends Scope. It contains information about the method signatures and the offsets of the class
+	that will be printed if the input is correct.
 	- The symbolTable class consists of three Maps and two Sets:
-		-> One Map for mapping className to ClassScope.
-		-> Another Map for mapping methods to Scope . That is <method_primary_key,Scope> where method_primary_key = <methodName,className>.
+		-> One Map for mapping className to ClassScope objects.
+		-> Another Map for mapping methods to Scope objects. That is <method_primary_key,Scope> where method_primary_key = <methodName,className>.
 		-> A third Map for mapping Scopes to ClassScopes (Inheritance Map). All methods have a mapping to their class (i.e. <Scope,ClassScope>) 
 		and if one class 'extends' another one then we have a mapping of <DerivedClass,BaseClass>.
 		-> The first Set (knownTypes) contains all types that have been declared (user-defined) plus the primitives and the array type.
@@ -54,7 +54,10 @@
 			counter = 0;
 
 			If counter is not declared, then my parser will generate two errors. The first one will be "undeclared identifier 'counter'" and the second will be
-			"not compatible types between assignemnt statement". 
+			"not compatible types between assignemnt statement". In general, every time the parsers sees an undeclared symbol in typechecking it will generate 
+			two errors in output.
+
+		In conclusion, at most cases my Parser tries to mimic javac.
 		
 															Testing
 															~~~~~~~
