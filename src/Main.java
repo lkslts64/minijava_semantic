@@ -27,7 +27,7 @@ class Main {
                     TypeCheckerVisitor typeCheckerVisitor = new TypeCheckerVisitor(sym.symbolTable);
                     if (root.accept(typeCheckerVisitor, null).equals("OK"))
                         sym.symbolTable.print_offsets();
-                        LLVMGenerator generator = new LLVMGenerator(sym.symbolTable);
+                        LLVMGenerator generator = new LLVMGenerator(sym.symbolTable,typeCheckerVisitor);
                         root.accept(generator,null);
                 }
             } catch (ParseException ex) {

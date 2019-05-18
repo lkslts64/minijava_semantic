@@ -1,8 +1,8 @@
 package symboltable;
 
 public class PairStringInteger {
-    private String funcname;
-    private Integer offset;
+    public String funcname;
+    public Integer offset;
     public PairStringInteger(String s,Integer i ){
         funcname = s;
         offset = i;

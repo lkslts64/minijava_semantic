@@ -177,6 +177,27 @@ public class SymbolTable {
         return null;
     }
 
+    public PairStringInteger findTypeVerbose(symboltable.Scope scope, String id) {
+        String type;
+        symboltable.Scope temp = scope;
+        while ( scope != null) {
+            type = scope.get(id);
+            if (type != null) {
+                if (temp != scope) {
+                    symboltable.ClassScope classScope = (symboltable.ClassScope)scope;
+                    for (PairStringInteger p : classScope.getVaroffsets()) {
+                        if ( p.funcname.equals(id)) {
+                            return new PairStringInteger(type,p.offset);
+                        }
+                    }
+                    return null; //error if not found
+                }
+                return new PairStringInteger(type,-1);
+            }
+            scope = getScopeInheritanceChain(scope);
+        }
+        return null;
+    }
     //check if type 'right' is subtype of supertype 'left'.
     public boolean checkSubType(String left,String right) {
         //if one of types is primitive then no subtyping.

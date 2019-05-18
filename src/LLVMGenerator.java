@@ -3,14 +3,20 @@
 //
 
 package myvisitors;
+import myvisitors.TypeCheckerVisitor;
+import symboltable.ClassScope;
 import symboltable.FuncSignature;
+import symboltable.PairStringInteger;
 import symboltable.PairStrings;
+import symboltable.Scope;
 import visitor.GJDepthFirst;
 import symboltable.SymbolTable;
 import syntaxtree.*;
-import symboltable.*;
 
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -25,13 +31,35 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
     // User-generated visitor methods below
     //
 
-    private SymbolTable sym;
-    private StringBuffer buffer;
+    SymbolTable sym;
+    StringBuffer buffer;
+    int reg_count;
+    int loop_count;
+    int if_count;
+    int oob_count;
+    int arr_alloc;
+    Vector<String> param_names;
+    Vector<String> arg_names;
+    HashMap<String,Vtable> vtables;
+    TypeCheckerVisitor typeCheckerVisitor;
+    Scope curr_scope;
 
 
-    public LLVMGenerator(SymbolTable sym) {
+
+    public LLVMGenerator(SymbolTable sym,TypeCheckerVisitor typeCheckerVisitor) {
         this.sym = sym;
+        this.reg_count = 0;
+        this.loop_count = 0;
+        this.if_count = 0;
+        this.oob_count = 0;
+        this.arr_alloc = 0;
+        this.typeCheckerVisitor = typeCheckerVisitor;
+        this.curr_scope = null;
         buffer = new StringBuffer();
+        param_names = new Vector<>();
+        arg_names = new Vector<>();
+        //vtables = new Vtable[sym.getClassHash().size()];
+        vtables = new HashMap<>();
     }
     /**
      * f0 -> MainClass()
@@ -42,6 +70,23 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
         return "@" + s;
     }
 
+    public String makeRegister() {
+        return "%_" + reg_count++;
+    }
+
+    public String makeIfLabel() {
+        return "if" + if_count++ + ":";
+    }
+    public String makeLoopLabel() {
+        return "loop" + loop_count++ + ":";
+    }
+
+    public String makeArrAllocLabel() {
+        return "arr_alloc" + arr_alloc++ + ":";
+    }
+    public String makeOobLabel() {
+        return "oob" + oob_count++ + ":";
+    }
     public String convertToLLVMType(String s) {
         if ( s.equals("int"))  {
             return "i32";
@@ -56,39 +101,73 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
             return "i8*";
         }
     }
+
+    //ampersand is always first character of string
+
     public void generateVtables() {
         for ( String c : sym.getClassHash()) {
-            PairStrings[] vtable = sym.getVtable(c);
+            Vtable vtable = new Vtable(sym.getVtable(c));
+            vtables.put(c,vtable);
             buffer.append(makeGlobal("." + c + "_vtable")); //append vtable name
             buffer.append(" = ");                              //assignment.
-            buffer.append("global [" + sym.getClassHash(c).getFuncSize() / 8 + " x i8*] [ ");
+            try {
+                buffer.append("global [" + vtable.meths.length + " x i8*] [ ");
+            }
             //empty v-table in case class has no methods.
-            if (vtable == null) {
-                buffer.append("]\n");
+            catch (NullPointerException ex) {
+                buffer.append("global [0 x i8*] []\n ");
                 continue;
             }
-            for (int i = 0; i< vtable.length; i++ ) {
-                FuncSignature funcSignature = sym.getClassHash(vtable[i].s2).getFuncBind(vtable[i].s1); //get i-th function signature of v-table.
+            for (int i = 0; i< vtable.meths.length; i++ ) {
+                FuncSignature funcSignature = sym.getClassHash(vtable.meths[i].s2).getFuncBind(vtable.meths[i].s1); //get i-th function signature of v-table.
                 buffer.append(" i8* bitcast (" + convertToLLVMType(funcSignature.getReturnType()) + " (i8*," );
                 for (int j = 0; j < funcSignature.getArgSize(); j++) {
                     buffer.append(convertToLLVMType(funcSignature.getArgType(j)) + ",");
                 }
                 buffer = buffer.deleteCharAt(buffer.length() - 1);  //remove the last comma
-                buffer.append(")* " + makeGlobal(vtable[i].s2 + "." + vtable[i].s1 + " to i8*),"));
+                buffer.append(")* " + makeGlobal(vtable.meths[i].s2 + "." + vtable.meths[i].s1  + " to i8*),"));
             }
             buffer = buffer.deleteCharAt(buffer.length() - 1); //remove the last comma
             buffer.append("]");
             buffer.append("\n");
         }
-        buffer = buffer.deleteCharAt(buffer.length() - 1); //remove the last comma
-        System.out.println(buffer);
     }
+
+
+
     public String visit(Goal n, String argu) {
         String _ret=null;
         generateVtables();
+        buffer.append("declare i8* @calloc(i32, i32)\n");
+        buffer.append("declare i32 @printf(i8*, ...)\n");
+        buffer.append("declare void @exit(i32)\n");
+        buffer.append("@_cint = constant [4 x i8] c\"%d\\0a\\00\"\n");
+        buffer.append("@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"\n");
+        buffer.append("define void @print_int(i32 %i) {\n");
+        buffer.append("    %_str = bitcast [4 x i8]* @_cint to i8*\n");
+        buffer.append("    call i32 (i8*, ...) @printf(i8* %_str, i32 %i)\n");
+        buffer.append("    ret void\n");
+        buffer.append("}\n");
+        buffer.append("define void @throw_oob() {\n");
+        buffer.append("    %_str = bitcast [15 x i8]* @_cOOB to i8*\n");
+        buffer.append("    call i32 (i8*, ...) @printf(i8* %_str)\n");
+        buffer.append("    call void @exit(i32 1)\n");
+        buffer.append("    ret void\n");
+        buffer.append("}\n");
         n.f0.accept(this, argu);
         n.f1.accept(this, argu);
         n.f2.accept(this, argu);
+        System.out.println(buffer);
+        //BufferedWriter bwr = new BufferedWriter(new FileWriter(new File("out.ll")));
+        try {
+            FileWriter fileWriter = new FileWriter(new File("out.ll"));
+            fileWriter.write(buffer.toString());
+            fileWriter.flush();
+        }
+        catch (IOException ex) {
+            System.out.println("IO EXCEPTION");
+            System.exit(-1);
+        }
         return _ret;
     }
 
@@ -114,24 +193,11 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(MainClass n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        n.f8.accept(this, argu);
-        n.f9.accept(this, argu);
-        n.f10.accept(this, argu);
-        n.f11.accept(this, argu);
-        n.f12.accept(this, argu);
-        n.f13.accept(this, argu);
-        n.f14.accept(this, argu);
-        n.f15.accept(this, argu);
-        n.f16.accept(this, argu);
-        n.f17.accept(this, argu);
+        String cname = (n.f1.accept(this, "plain"));
+        buffer.append("define i32 @main() {\n");
+        n.f14.accept(this, null);
+        n.f15.accept(this, null);
+        buffer.append("ret i32 0\n}\n");
         return _ret;
     }
 
@@ -154,11 +220,8 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
     public String visit(ClassDeclaration n, String argu) {
         String _ret=null;
         n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
+        String cname = (n.f1.accept(this, "plain"));
+        n.f4.accept(this,cname);
         return _ret;
     }
 
@@ -174,14 +237,8 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(ClassExtendsDeclaration n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
+        String cname = (n.f1.accept(this, "plain"));
+        n.f6.accept(this, cname);
         return _ret;
     }
 
@@ -192,9 +249,8 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(VarDeclaration n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
+        System.out.println(n.f0.accept(this,argu));
+        buffer.append(n.f1.accept(this,"percent") + " = alloca " + convertToLLVMType(n.f0.accept(this,argu)) + "\n");
         return _ret;
     }
 
@@ -213,21 +269,34 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f11 -> ";"
      * f12 -> "}"
      */
+    //argu is method's class name here
     public String visit(MethodDeclaration n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        n.f8.accept(this, argu);
-        n.f9.accept(this, argu);
-        n.f10.accept(this, argu);
-        n.f11.accept(this, argu);
-        n.f12.accept(this, argu);
+        reg_count = 0;
+        String fname = n.f2.accept(this, "plain");
+        curr_scope = sym.getFuncHash(fname,argu);
+        ClassScope classScope = sym.getClassHash(argu);
+        n.f4.accept(this,argu); //fill param_names vector with identifiers.
+        FuncSignature funcSignature = classScope.getFuncBind(fname);
+        buffer.append("define " + convertToLLVMType(funcSignature.getReturnType()) + " " + makeGlobal(argu + "." + fname) + "(i8* %this,");
+        for (int i = 0; i < funcSignature.getArgSize(); i++) {
+            buffer.append(convertToLLVMType(funcSignature.getArgType(i)) + " " + param_names.get(i) + ",");
+        }
+        buffer.deleteCharAt(buffer.length()-1);
+        buffer.append(") {\n");
+        int count = 0;
+        for (String s : param_names) {
+            String no_dot = "%" + s.substring(2);
+            buffer.append(no_dot + " = alloca " + convertToLLVMType(funcSignature.getArgType(count)) + "\n");
+            buffer.append("store " + convertToLLVMType(funcSignature.getArgType(count)) + " " + s + ", " + convertToLLVMType(funcSignature.getArgType(count)) + "* " + no_dot + "\n");
+            count++;
+        }
+        param_names.clear(); //clear params vector for future use.
+        n.f7.accept(this, null);
+        n.f8.accept(this, null);
+        String ret_val = n.f10.accept(this, null);
+        buffer.append("ret " + convertToLLVMType(funcSignature.getReturnType()) + " " + ret_val + "\n");
+        buffer.append("}\n");
         return _ret;
     }
 
@@ -248,8 +317,7 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(FormalParameter n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
+        param_names.add(n.f1.accept(this, "percent-dot"));
         return _ret;
     }
 
@@ -278,6 +346,9 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      *       | Identifier()
      */
     public String visit(Type n, String argu) {
+        if (n.f0.which == 3) {
+            return n.f0.accept(this, "plain");
+        }
         return n.f0.accept(this, argu);
     }
 
@@ -287,11 +358,7 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> "]"
      */
     public String visit(ArrayType n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        return n.f0.accept(this, argu)+ n.f1.accept(this, argu)+ n.f2.accept(this, argu);
     }
 
     /**
@@ -316,21 +383,9 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      *       | WhileStatement()
      *       | PrintStatement()
      */
+    //MAYBE CHANGE THIS NULL
     public String visit(Statement n, String argu) {
-        return n.f0.accept(this, argu);
-    }
-
-    /**
-     * f0 -> "{"
-     * f1 -> ( Statement() )*
-     * f2 -> "}"
-     */
-    public String visit(Block n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        return n.f0.accept(this, null);
     }
 
     /**
@@ -341,10 +396,9 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(AssignmentStatement n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
+        String id_addr = n.f0.accept(this, "addr");
+        String expr = n.f2.accept(this, argu);
+        buffer.append("store " + convertToLLVMType(sym.findType(curr_scope,n.f0.accept(this,"plain"))) + " " + expr + ", " + convertToLLVMType(sym.findType(curr_scope,n.f0.accept(this,"plain"))) + "* " + id_addr + "\n");
         return _ret;
     }
 
@@ -359,13 +413,14 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(ArrayAssignmentStatement n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
+        String arr  = n.f0.accept(this, "load");
+        String index = n.f2.accept(this, argu);
+        String store_val = n.f5.accept(this, argu);
+        String incr = makeRegister();
+        String arr_addr = makeRegister();
+        buffer.append(incr + " = add i32 " + index + ", 4\n");
+        buffer.append(arr_addr + " = getelementptr i32, i32* " + arr + ", i32 " + index + "\n");
+        buffer.append("store i32 " +  store_val + ", i32* " + arr_addr + "\n");
         return _ret;
     }
 
@@ -380,13 +435,18 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(IfStatement n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
+        String if_lab1 = makeIfLabel();
+        String if_lab2 = makeIfLabel();
+        String if_lab3 = makeIfLabel();
+        String expr = n.f2.accept(this, argu);
+        buffer.append("br i1 " + expr + ", label %" + if_lab1.substring(0,if_lab1.length() - 1) + ", label %" + if_lab2.substring(0,if_lab2.length() -1) + "\n");
+        buffer.append(if_lab1 + "\n");
         n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
+        buffer.append("br label %" + if_lab3.substring(0,if_lab3.length() -1) + "\n");
+        buffer.append(if_lab2 + "\n");
         n.f6.accept(this, argu);
+        buffer.append("br label %" + if_lab3.substring(0,if_lab3.length() -1) + "\n");
+        buffer.append(if_lab3 + "\n");
         return _ret;
     }
 
@@ -398,13 +458,18 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f4 -> Statement()
      */
     public String visit(WhileStatement n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
+        String loop_lab1 = makeLoopLabel();
+        String loop_lab2 = makeLoopLabel();
+        String loop_lab3 = makeLoopLabel();
+        buffer.append("br label %" + loop_lab1.substring(0,loop_lab1.length() - 1) + "\n");
+        buffer.append(loop_lab1 + "\n");
+        String expr = n.f2.accept(this, argu);
+        buffer.append("br i1 " + expr + ", label %" + loop_lab2.substring(0,loop_lab2.length() - 1) + ", label %" + loop_lab3.substring(0,loop_lab3.length() -1) + "\n");
+        buffer.append(loop_lab2 + "\n");
         n.f4.accept(this, argu);
-        return _ret;
+        buffer.append("br label %" + loop_lab1.substring(0,loop_lab1.length() - 1) + "\n");
+        buffer.append(loop_lab3 + "\n");
+        return null;
     }
 
     /**
@@ -416,11 +481,13 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(PrintStatement n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
+        String expr = n.f2.accept(this, argu);
+        if (n.f2.accept(typeCheckerVisitor,curr_scope).equals("boolean")) {
+            String cast_to_int = makeRegister();
+            buffer.append(cast_to_int + " = zext i1 " + expr + " to i32\n");
+            buffer.append("call void (i32) @print_int(i32 " + cast_to_int + ")\n");
+        }
+        buffer.append("call void (i32) @print_int(i32 " + expr + ")\n");
         return _ret;
     }
 
@@ -445,11 +512,23 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> Clause()
      */
     public String visit(AndExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String dummy = makeRegister();
+        String res = makeRegister();
+        String if_lab1 = makeIfLabel();
+        String if_lab2 = makeIfLabel();
+        String if_lab3 = makeIfLabel();
+        String cl1 = n.f0.accept(this, argu);
+        buffer.append("br i1 " + cl1 + ", label %" + if_lab1.substring(0,if_lab1.length() -1) + ",label %" + if_lab2.substring(0,if_lab2.length() -1) + "\n");
+        buffer.append(if_lab1 + "\n");
+        String cl2 = n.f2.accept(this, argu);
+        buffer.append("br label %" + if_lab3.substring(0,if_lab3.length() -1) + "\n");
+        buffer.append(if_lab2 + "\n");
+        buffer.append(dummy + " = icmp eq i1 " + cl1 + ", 1\n"); //in this case cl1 will always be zero so dummy will be zero.
+        buffer.append("br label %" + if_lab3.substring(0,if_lab3.length() -1) + "\n");
+        buffer.append(if_lab3 + "\n");
+        buffer.append(res + " = phi i1 [" + cl2 + ", %" + if_lab1.substring(0,if_lab1.length() - 1) + "], [" + dummy + ", %" + if_lab2.substring(0,if_lab2.length() - 1) +"]\n");
+
+        return res;
     }
 
     /**
@@ -458,11 +537,11 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> PrimaryExpression()
      */
     public String visit(CompareExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String left = n.f0.accept(this, argu);
+        String right = n.f2.accept(this, argu);
+        String res = makeRegister();
+        buffer.append(res + " = icmp slt i32 " + left + ", " + right + "\n");
+        return res;
     }
 
     /**
@@ -471,11 +550,11 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> PrimaryExpression()
      */
     public String visit(PlusExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String left = n.f0.accept(this, argu);
+        String right = n.f2.accept(this, argu);
+        String res = makeRegister();
+        buffer.append(res + " = add i32 " + left + ", " + right + "\n");
+        return res;
     }
 
     /**
@@ -484,11 +563,11 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> PrimaryExpression()
      */
     public String visit(MinusExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String left = n.f0.accept(this, argu);
+        String right = n.f2.accept(this, argu);
+        String res = makeRegister();
+        buffer.append(res + " = sub i32 " + left + ", " + right + "\n");
+        return res;
     }
 
     /**
@@ -497,11 +576,11 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> PrimaryExpression()
      */
     public String visit(TimesExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String left = n.f0.accept(this, argu);
+        String right = n.f2.accept(this, argu);
+        String res = makeRegister();
+        buffer.append(res + " = mul i32 " + left + ", " + right + "\n");
+        return res;
     }
 
     /**
@@ -511,12 +590,16 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f3 -> "]"
      */
     public String visit(ArrayLookup n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        return _ret;
+        String incr = makeRegister();
+        String res = makeRegister();
+        String res_addr = makeRegister();
+        String arr  = n.f0.accept(this, argu);
+        String index = n.f2.accept(this, argu);
+        buffer.append(incr + " = add i32 " + index + ", 4\n");
+        buffer.append(res_addr + " = getelementptr i32, i32* " + arr + ", i32 " + index + "\n");
+        buffer.append(res + " = load i32, i32* " + res_addr + "\n");
+
+        return res;
     }
 
     /**
@@ -525,11 +608,10 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> "length"
      */
     public String visit(ArrayLength n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        String arr_addr  = n.f0.accept(this, argu);
+        String res = makeRegister();
+        buffer.append(res + " = load i32, i32* " + arr_addr + "\n");
+        return res;
     }
 
     /**
@@ -541,14 +623,53 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f5 -> ")"
      */
     public String visit(MessageSend n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
+        int i;
+        String obj_addr = n.f0.accept(this, argu);
+        /*
+        int ind = argu.indexOf('#');
+        Scope scope = sym.getFuncHash(argu.substring(0,ind),argu.substring(ind+1));
+        String cname = n.f0.accept(typeCheckerVisitor,scope);
+        ///////////////////////////////////////
+        */
+        //we need to find the class of object in order to find offset of method in vtable.
+        //so we invoke typecheker to do the work.
+        String cname= n.f0.accept(typeCheckerVisitor,curr_scope);
+        String fname = (n.f2.accept(this, "plain"));
+        Vtable vtable = vtables.get(cname);
+        for (i = 0; i < vtable.meths.length; i++) {
+            if (vtable.meths[i].s1.equals(fname))
+                break;
+        }
+        if (i == vtable.meths.length)
+            System.out.println("PANIC MESSAGE SEND");
+        FuncSignature funcSignature = sym.getClassHash(vtable.meths[i].s2).getFuncBind(vtable.meths[i].s1); //get i-th function signature of v-table.
+        String convert_obj = makeRegister();
+        buffer.append(convert_obj + " = bitcast i8* " + obj_addr + " to i8***\n");
+        String vtable_addr = makeRegister();
+        buffer.append(vtable_addr + " = load i8 **, i8*** " + convert_obj + "\n");
+        String func_addr = makeRegister();
+        buffer.append(func_addr + " = getelementptr i8*, i8** " + vtable_addr + ",i32 " + i + "\n");
+        String func_load = makeRegister();
+        buffer.append(func_load + " = load i8*, i8** " + func_addr + "\n");
+        String funcsign = makeRegister();
+        buffer.append(funcsign + " = bitcast i8* " + func_load + " to " + convertToLLVMType(funcSignature.getReturnType()) + " (i8*,");
+        //buffer.append(convertToLLVMType(funcSignature.getReturnType()));
+        for (int j = 0; j < funcSignature.getArgSize(); j++) {
+            buffer.append(convertToLLVMType(funcSignature.getArgType(j)) + ",");
+        }
+        buffer = buffer.deleteCharAt(buffer.length() - 1);  //remove the last comma
+        buffer.append(")*\n");
         n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        return _ret;
+        String res = makeRegister();
+        buffer.append(res + " = call " + convertToLLVMType(funcSignature.getReturnType()) + " " + funcsign + "(i8* " + obj_addr + "," );
+        for(i = 0; i < arg_names.size();i++) {
+            buffer.append(convertToLLVMType(funcSignature.getArgType(i)) + " " + arg_names.get(i) + ",");
+        }
+        buffer = buffer.deleteCharAt(buffer.length() - 1);  //remove the last comma
+        buffer.append(")\n");
+        arg_names.clear();
+        return res;
+
     }
 
     /**
@@ -557,7 +678,7 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      */
     public String visit(ExpressionList n, String argu) {
         String _ret=null;
-        n.f0.accept(this, argu);
+        arg_names.add(n.f0.accept(this, argu));
         n.f1.accept(this, argu);
         return _ret;
     }
@@ -576,7 +697,7 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
     public String visit(ExpressionTerm n, String argu) {
         String _ret=null;
         n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
+        arg_names.add(n.f1.accept(this, argu));
         return _ret;
     }
 
@@ -599,42 +720,96 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      *       | BracketExpression()
      */
     public String visit(PrimaryExpression n, String argu) {
+        //identifier case..
+        if (n.f0.which == 3)
+            return n.f0.accept(this,"load");
         return n.f0.accept(this, argu);
     }
 
+    //public String visit(PrimaryExpression n) {
     /**
      * f0 -> <INTEGER_LITERAL>
      */
     public String visit(IntegerLiteral n, String argu) {
-        return n.f0.accept(this, argu);
+        /*String res = makeRegister();
+        buffer.append(res + " = constant i32 " + n.f0.accept(this, argu) + "\n");
+        return res;*/
+        return "" + n.f0.accept(this,argu);
     }
 
     /**
      * f0 -> "true"
      */
     public String visit(TrueLiteral n, String argu) {
-        return n.f0.accept(this, argu);
+        /*String res = makeRegister();
+        buffer.append(res + " = constant i1 " + n.f0.accept(this, argu) + "\n");
+        return res;*/
+        return "1";
     }
 
     /**
      * f0 -> "false"
      */
     public String visit(FalseLiteral n, String argu) {
-        return n.f0.accept(this, argu);
+        /*String res = makeRegister();
+        buffer.append(res + " = constant i1 " + n.f0.accept(this, argu) + "\n");
+        return res;*/
+        return "0";
     }
 
     /**
      * f0 -> <IDENTIFIER>
      */
     public String visit(Identifier n, String argu) {
-        return n.f0.accept(this, argu);
+        if (argu.equals("percent-dot")) {
+            return "%." + n.f0.accept(this, argu);
+        } else if (argu.equals("percent")) {
+            return "%" + n.f0.accept(this, argu);
+        }
+        else if(argu.equals("load")) {
+            PairStringInteger pairStringInteger = sym.findTypeVerbose(curr_scope,n.f0.accept(this,null));
+            String res = makeRegister();
+            //pairStringInteger.funcname here is variable type (int,boolean,userdefined etc.) and it should not be misunderstood.
+            if ( pairStringInteger.offset < 0) {
+                buffer.append(res + " = load " + convertToLLVMType(pairStringInteger.funcname) + ", " + convertToLLVMType(pairStringInteger.funcname) + "* %" + n.f0.accept(this, argu) + "\n");
+            }
+            else  {
+                String fld_addr = makeRegister();
+                String fld_cast = makeRegister();
+                pairStringInteger.offset += 8;
+                buffer.append(fld_addr + " = getelementptr i8, i8* %this,i32 " + pairStringInteger.offset + "\n");
+                buffer.append(fld_cast + " = bitcast i8* " + fld_addr + " to " + convertToLLVMType(pairStringInteger.funcname) + "*\n");
+                buffer.append(res + " = load " + convertToLLVMType(pairStringInteger.funcname) + ", "  + convertToLLVMType(pairStringInteger.funcname) + "* " + fld_cast + "\n");
+            }
+            return res;
+        }
+        else if(argu.equals("plain")) {
+            return n.f0.accept(this,argu);
+        }
+        else if(argu.equals("addr")) {
+            PairStringInteger pairStringInteger = sym.findTypeVerbose(curr_scope,n.f0.accept(this,null));
+            if ( pairStringInteger.offset < 0) {
+                return "%" + n.f0.accept(this, argu);
+            } else {
+                String fld_addr = makeRegister();
+                String fld_cast = makeRegister();
+                pairStringInteger.offset += 8;
+                buffer.append(fld_addr + " = getelementptr i8, i8* %this,i32 " + pairStringInteger.offset + "\n");
+                buffer.append(fld_cast + " = bitcast i8* " + fld_addr + " to " + convertToLLVMType(pairStringInteger.funcname) + "*\n");
+                return fld_cast;
+            }
+        }
+        else {
+            System.out.println("PANIC IN IDENTIFIER" + argu);
+            return null;
+        }
     }
 
     /**
      * f0 -> "this"
      */
     public String visit(ThisExpression n, String argu) {
-        return n.f0.accept(this, argu);
+        return "%" + n.f0.accept(this, argu);
     }
 
     /**
@@ -645,13 +820,15 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f4 -> "]"
      */
     public String visit(ArrayAllocationExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        return _ret;
+        String expr_res = n.f3.accept(this, argu);
+        String arr_size = makeRegister();
+        String arr_alloc = makeRegister();
+        String convert = makeRegister();
+        buffer.append(arr_size + " = add i32 " + expr_res + ", 1\n"); //add length to allocation size (4 bytes more).
+        buffer.append(arr_alloc + " = call i8* @calloc(i32 4, i32 " + arr_size + ")\n");    //allocate memory
+        buffer.append(convert + " = bitcast i8* " + arr_alloc + " to i32*\n");
+        buffer.append("store i32 " + expr_res + ", i32* " + convert + "\n"); //store length
+        return convert;
     }
 
     /**
@@ -661,12 +838,25 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f3 -> ")"
      */
     public String visit(AllocationExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        return _ret;
+        String type = (n.f1.accept(this, "plain"));
+        ClassScope classScope = sym.getClassHash(type);
+        int size = classScope.getVarSize() + 8; //fields size + vtable pointer.
+        String obj_addr = makeRegister();
+        buffer.append(obj_addr + " = call i8* @calloc(i32 1,i32 " + size + ")\n");
+        /*String addr_cast = makeRegister();
+        buffer.append(addr_cast + " = bitcast i8* " + obj_addr + " to i8***\n");
+        Vtable vtable = vtables.get(type);
+        String vtable_addr = makeRegister();
+        buffer.append(vtable_addr + " = getelementptr [" + vtable.meths.length + " x i8*], [" + vtable.meths.length + " x i8*]* " + makeGlobal("." + type + "_vtable") + ",i32 0,i32 0\n");
+        */
+
+        //alternatively...
+        String addr_cast = makeRegister();
+        Vtable vtable = vtables.get(type);
+        buffer.append(addr_cast + " = bitcast i8* " + obj_addr + " to [" + vtable.meths.length + " x i8*]**\n");
+        buffer.append("store [" +  vtable.meths.length + " x i8*]* " + makeGlobal("." + type + "_vtable") + ", " + "[" + vtable.meths.length + " x i8*]** " + addr_cast +"\n");
+
+        return obj_addr;
     }
 
     /**
@@ -674,10 +864,10 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f1 -> Clause()
      */
     public String visit(NotExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
+        String inverted_res = n.f1.accept(this, argu);
+        String res = makeRegister();
+        buffer.append(res + " = icmp eq i1 " + inverted_res + ", 0\n");
+        return res;
     }
 
     /**
@@ -686,12 +876,15 @@ public class LLVMGenerator extends GJDepthFirst<String,String> {
      * f2 -> ")"
      */
     public String visit(BracketExpression n, String argu) {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
+        return n.f1.accept(this, argu);
     }
 
 }
+class Vtable {
 
+    PairStrings[] meths;
+
+    public Vtable(PairStrings[] meths) {
+        this.meths = meths;
+    }
+}
